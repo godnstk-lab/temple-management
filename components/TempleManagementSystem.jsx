@@ -3,7 +3,7 @@ import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue } from 'firebase/database';
 
-// Firebase 설정 (나중에 본인의 Firebase 프로젝트 정보로 교체해야 합니다)
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyBt-2DpZfQVM35YBajQEJI0D8LSN1HzL_4",
   authDomain: "temple-management-49ae1.firebaseapp.com",
