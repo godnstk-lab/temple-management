@@ -579,6 +579,83 @@ const filteredBelievers = believers.filter(b => {
               </div>
             )}
           </div>
+          {/* 검색 결과 총합계 - 세로 배치 */}
+            {filteredBelievers.length > 0 && (
+              <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
+                <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
+                  📊 검색 결과 총합계 ({filteredBelievers.length}명)
+                </h3>
+                
+                <div className="space-y-3">
+                  {/* 총 불사금액 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">🙏</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 불사금액</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-blue-600">
+                        {formatNumber(searchTotals.totalBulsa)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 총 입금액 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">💰</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 입금액</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-green-600">
+                        {formatNumber(searchTotals.totalDeposit)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 총 미수금 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-red-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">📋</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 미수금</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-red-600">
+                        {formatNumber(searchTotals.totalUnpaid)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 입금률 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">📊</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">입금률</span>
+                      </div>
+                      <span className="text-xl sm:text-3xl font-bold text-amber-700">
+                        {searchTotals.totalBulsa > 0 
+                          ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1)
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${searchTotals.totalBulsa > 0 
+                            ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100)
+                            : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
 
         {showAddForm && userRole === 'admin' && (
