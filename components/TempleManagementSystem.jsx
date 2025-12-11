@@ -5,13 +5,13 @@ import { getDatabase, ref, set, onValue } from 'firebase/database';
 
 // Firebase 설정 (나중에 본인의 Firebase 프로젝트 정보로 교체해야 합니다)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBt-2DpZfQVM35YBajQEJI0D8LSN1HzL_4",
+  authDomain: "temple-management-49ae1.firebaseapp.com",
+  databaseURL: "https://temple-management-49ae1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "temple-management-49ae1",
+  storageBucket: "temple-management-49ae1.firebasestorage.app",
+  messagingSenderId: "753617201876",
+  appId: "1:753617201876:web:6ebd3c15c76dd3db536941"
 };
 
 // Firebase 초기화
