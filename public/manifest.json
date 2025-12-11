@@ -1,8 +1,0 @@
-{
-  "name": "해운사 신도관리 시스템",
-  "short_name": "해운사",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#78350f",
-  "theme_color": "#78350f"
-}
