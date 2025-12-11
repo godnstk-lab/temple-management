@@ -78,7 +78,7 @@ export default function TempleManagementSystem() {
       setIsLoggedIn(true);
       setUserRole('admin');
       alert('관리자로 로그인되었습니다.');
-    } else if (loginPassword === '1211') {
+    } else if (loginPassword === '1023') {
       setIsLoggedIn(true);
       setUserRole('user');
       alert('일반 사용자로 로그인되었습니다.');
