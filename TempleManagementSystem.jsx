@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue } from 'firebase/database';
+import { getDatabase, ref, set, onValue } from 'firebase/database';
 
-// Firebase 설정 (나중에 본인의 Firebase 프로젝트 정보로 교체해야 합니다)
+// Firebase 설정
 const firebaseConfig = {
-  apiKey: "AIzaSyBVxk4RO4bufjbCzqkS-VbbYHNvq3NMqaE",
-  authDomain: "gaunsa-1.firebaseapp.com",
-  databaseURL: "https://gaunsa-1-default-rtdb.firebaseio.com",
-  projectId: "gaunsa-1",
-  storageBucket: "gaunsa-1.firebasestorage.app",
-  messagingSenderId: "499476629918",
-  appId: "1:499476629918:web:5b5761bca2964e439fee8f",
-  measurementId: "G-G8DKWLDTZJ"
+  apiKey: "AIzaSyBt-2DpZfQVM35YBajQEJI0D8LSN1HzL_4",
+  authDomain: "temple-management-49ae1.firebaseapp.com",
+  databaseURL: "https://temple-management-49ae1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "temple-management-49ae1",
+  storageBucket: "temple-management-49ae1.firebasestorage.app",
+  messagingSenderId: "753617201876",
+  appId: "1:753617201876:web:6ebd3c15c76dd3db536941"
 };
 
 // Firebase 초기화
