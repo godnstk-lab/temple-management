@@ -330,12 +330,43 @@ const [showInstallButton, setShowInstallButton] = useState(true);
   const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
-  const filteredBelievers = believers.filter(b => {
-    if (!searchTerm) return true;
-    const lower = searchTerm.toLowerCase();
-    const bulsaText = (b.bulsa || []).map(item => (item.content || '').toLowerCase()).join(' ');
-    return (b.name || '').toLowerCase().includes(lower) || (b.phone || '').includes(searchTerm) || bulsaText.includes(lower);
+const filteredBelievers = believers.filter(b => {
+  if (!searchTerm) return true;
+  
+  // 검색어에서 크기 키워드 추출 (소, 중, 대)
+  const sizeKeywords = [];
+  if (searchTerm.includes('소')) sizeKeywords.push('소');
+  if (searchTerm.includes('중')) sizeKeywords.push('중');
+  if (searchTerm.includes('대')) sizeKeywords.push('대');
+  
+  // 크기 키워드를 제거한 나머지 검색어 (이름/전화번호/불사내용 검색용)
+  let textSearch = searchTerm;
+  sizeKeywords.forEach(size => {
+    textSearch = textSearch.replace(size, '');
   });
+  textSearch = textSearch.trim().toLowerCase();
+  
+  // 이름, 전화번호, 불사내용 매칭
+  const nameMatch = textSearch === '' || (b.name || '').toLowerCase().includes(textSearch);
+  const phoneMatch = textSearch === '' || (b.phone || '').includes(textSearch);
+  const bulsaContentMatch = textSearch === '' || (b.bulsa || []).some(item => 
+    (item.content || '').toLowerCase().includes(textSearch)
+  );
+  
+  const textMatches = nameMatch || phoneMatch || bulsaContentMatch;
+  
+  // 크기 검색이 없으면 텍스트 매칭만으로 충분
+  if (sizeKeywords.length === 0) {
+    return textMatches;
+  }
+  
+  // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
+  const hasBulsaWithSize = (b.bulsa || []).some(item => 
+    sizeKeywords.includes(item.size)
+  );
+  
+  return textMatches && hasBulsaWithSize;
+});
 
   if (!isLoggedIn) {
     return (
