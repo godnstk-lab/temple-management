@@ -30,6 +30,8 @@ export default function TempleManagementSystem() {
   const [selectedBeliever, setSelectedBeliever] = useState(null);
   const [showBulsaPopup, setShowBulsaPopup] = useState(false);
   const [showDepositPopup, setShowDepositPopup] = useState(false);
+  const [showBulsaEditPopup, setShowBulsaEditPopup] = useState(false);
+  const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '' };
@@ -39,6 +41,7 @@ export default function TempleManagementSystem() {
   const [newBulsaData, setNewBulsaData] = useState(emptyBulsa);
   const [bulsaForm, setBulsaForm] = useState(emptyBulsa);
   const [depositForm, setDepositForm] = useState(emptyDeposit);
+  const [editBulsaForm, setEditBulsaForm] = useState(emptyBulsa);
 
   useEffect(() => {
     // Firebase 실시간 리스너 설정
@@ -204,6 +207,37 @@ export default function TempleManagementSystem() {
     setBelievers(updatedBelievers);
     saveBelievers(updatedBelievers);
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
+  };
+
+  const openBulsaEditPopup = (index) => {
+    setEditingBulsaIndex(index);
+    setEditBulsaForm({ ...selectedBeliever.bulsa[index] });
+    setShowBulsaEditPopup(true);
+  };
+
+  const confirmBulsaEdit = () => {
+    if (!editBulsaForm.content || !editBulsaForm.amount || !editBulsaForm.person) {
+      alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
+      return;
+    }
+
+    const updatedBelievers = believers.map(b => {
+      if (b.id === selectedBeliever.id) {
+        const newBulsa = [...b.bulsa];
+        newBulsa[editingBulsaIndex] = { ...editBulsaForm };
+        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+        return { ...b, bulsa: newBulsa, unpaid };
+      }
+      return b;
+    });
+
+    setBelievers(updatedBelievers);
+    saveBelievers(updatedBelievers);
+    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+    alert('불사내용이 수정되었습니다.');
+    setShowBulsaEditPopup(false);
+    setEditingBulsaIndex(null);
+    setEditBulsaForm(emptyBulsa);
   };
 
   const openDepositPopup = (believer) => {
@@ -612,12 +646,20 @@ export default function TempleManagementSystem() {
                         {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                       </div>
                       {userRole === 'admin' && (
-                        <button
-                          onClick={() => deleteBulsa(selectedBeliever.id, idx)}
-                          className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors ml-2 sm:ml-4"
-                        >
-                          삭제
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openBulsaEditPopup(idx)}
+                            className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => deleteBulsa(selectedBeliever.id, idx)}
+                            className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -719,6 +761,110 @@ export default function TempleManagementSystem() {
                   닫기
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {showBulsaEditPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
+                <button 
+                  onClick={() => {
+                    setShowBulsaEditPopup(false);
+                    setEditingBulsaIndex(null);
+                    setEditBulsaForm(emptyBulsa);
+                  }} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사내용 *</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.content}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, content: e.target.value})}
+                    placeholder="예: 용두관음"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사금액 (만원) *</label>
+                  <input
+                    type="number"
+                    value={editBulsaForm.amount}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, amount: e.target.value})}
+                    placeholder="0"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안자/복위자 *</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.person}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, person: e.target.value})}
+                    placeholder="OO생-홍길동"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
+                  <div className="flex gap-2">
+                    {['소', '중', '대'].map(size => (
+                      <button
+                        key={size}
+                        onClick={() => setEditBulsaForm({...editBulsaForm, size})}
+                        className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
+                          editBulsaForm.size === size 
+                            ? 'bg-amber-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안위치</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.location}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, location: e.target.value})}
+                    placeholder="예: 1층 동쪽"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <button
+                  onClick={confirmBulsaEdit}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
+                >
+                  수정 완료
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBulsaEditPopup(false);
+                    setEditingBulsaIndex(null);
+                    setEditBulsaForm(emptyBulsa);
+                  }}
+                  className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
+                >
+                  취소
+                </button>
+              </div>
             </div>
           </div>
         )}
