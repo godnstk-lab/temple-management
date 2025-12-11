@@ -32,6 +32,8 @@ export default function TempleManagementSystem() {
   const [showDepositPopup, setShowDepositPopup] = useState(false);
   const [showBulsaEditPopup, setShowBulsaEditPopup] = useState(false);
   const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+const [showInstallButton, setShowInstallButton] = useState(true);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '' };
@@ -61,6 +63,51 @@ export default function TempleManagementSystem() {
 
     return () => unsubscribe();
   }, []);
+  useEffect(() => {
+    // PWA 설치 이벤트 리스너
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // 이미 설치되었는지 확인
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallButton(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      // iOS나 설치 프롬프트가 없을 때 안내
+      alert('📱 홈 화면에 추가하는 방법:\n\n' +
+            'iPhone (Safari):\n' +
+            '1. 하단 공유 버튼 (□↑) 탭\n' +
+            '2. "홈 화면에 추가" 선택\n' +
+            '3. "추가" 탭\n\n' +
+            'Android (Chrome):\n' +
+            '1. 우측 상단 점 3개 (⋮) 탭\n' +
+            '2. "홈 화면에 추가" 선택\n' +
+            '3. "추가" 탭');
+      return;
+    }
+
+    // 안드로이드 Chrome PWA 설치
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setShowInstallButton(false);
+    }
+    
+    setDeferredPrompt(null);
+  };
 
   const saveBelievers = async (newBelievers) => {
     try {
@@ -293,6 +340,18 @@ export default function TempleManagementSystem() {
   if (!isLoggedIn) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
+        {/* 설치 버튼 - 우측 상단 */}
+        {showInstallButton && (
+          <button
+            onClick={handleInstallClick}
+            className="fixed top-4 right-4 z-50 bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 font-bold text-sm transition-all animate-pulse"
+            style={{top: 'max(1rem, env(safe-area-inset-top))', right: 'max(1rem, env(safe-area-inset-right))'}}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">앱 설치</span>
+            <span className="sm:hidden">설치</span>
+          </button>
+        )}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwgMjUxLCAyMzUsIDAuMSkiLz48L2c+PC9zdmc+')] opacity-30"></div>
         <div className="absolute top-0 left-0 w-full h-full">
           <div className="absolute top-10 left-10 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl"></div>
