@@ -367,8 +367,6 @@ const filteredBelievers = believers.filter(b => {
   
   return textMatches && hasBulsaWithSize;
 });
-  return textMatches && hasBulsaWithSize;
-});
 
   // 검색된 신도들의 총합계 계산
   const searchTotals = filteredBelievers.reduce((totals, believer) => {
