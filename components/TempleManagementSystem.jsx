@@ -367,6 +367,21 @@ const filteredBelievers = believers.filter(b => {
   
   return textMatches && hasBulsaWithSize;
 });
+  return textMatches && hasBulsaWithSize;
+});
+
+  // 검색된 신도들의 총합계 계산
+  const searchTotals = filteredBelievers.reduce((totals, believer) => {
+    const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
+    const depositTotal = getTotalDepositAmount(believer.deposits || []);
+    const unpaidTotal = parseInt(believer.unpaid || 0);
+    
+    return {
+      totalBulsa: totals.totalBulsa + bulsaTotal,
+      totalDeposit: totals.totalDeposit + depositTotal,
+      totalUnpaid: totals.totalUnpaid + unpaidTotal
+    };
+  }, { totalBulsa: 0, totalDeposit: 0, totalUnpaid: 0 });
 
   if (!isLoggedIn) {
     return (
