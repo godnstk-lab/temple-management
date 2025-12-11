@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#__next {
+  height: 100%;
+  overflow: auto;
+}
+```
+
+**Commit!**
+
+---
+
+### Step 2: _document.js 추가
+
+**GitHub:**
+```
+pages 폴더
+→ "Create new file"
+→ 이름: _document.js
