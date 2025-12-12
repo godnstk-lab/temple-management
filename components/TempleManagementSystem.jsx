@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue } from 'firebase/database';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Firebase 설정
 const firebaseConfig = {
@@ -17,6 +18,7 @@ const firebaseConfig = {
 // Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
+const storage = getStorage(app);
 
 export default function TempleManagementSystem() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,7 +35,10 @@ export default function TempleManagementSystem() {
   const [showBulsaEditPopup, setShowBulsaEditPopup] = useState(false);
   const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-const [showInstallButton, setShowInstallButton] = useState(true);
+  const [showInstallButton, setShowInstallButton] = useState(true);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '' };
@@ -63,6 +68,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
     return () => unsubscribe();
   }, []);
+  
   useEffect(() => {
     // PWA 설치 이벤트 리스너
     const handleBeforeInstallPrompt = (e) => {
@@ -144,6 +150,59 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
+  // 사진 선택 처리
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // 파일 크기 체크 (10MB 제한)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('파일 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      
+      // 이미지 파일만 허용
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+      }
+      
+      setPhotoFile(file);
+      
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 사진 삭제
+  const handlePhotoRemove = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
+  // Firebase Storage에 사진 업로드
+  const uploadPhoto = async (file, believerId) => {
+    try {
+      // 파일명: believers/{believerId}/{timestamp}.jpg
+      const timestamp = Date.now();
+      const fileName = `${timestamp}.jpg`;
+      const photoRef = storageRef(storage, `believers/${believerId}/${fileName}`);
+      
+      // 업로드
+      await uploadBytes(photoRef, file);
+      
+      // 다운로드 URL 가져오기
+      const downloadURL = await getDownloadURL(photoRef);
+      return downloadURL;
+    } catch (error) {
+      console.error('사진 업로드 실패:', error);
+      throw error;
+    }
+  };
+  
   const calcTotals = (bulsa, deposits) => {
     const totalBulsa = (bulsa || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
     const totalDeposit = (deposits || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
@@ -153,26 +212,52 @@ const [showInstallButton, setShowInstallButton] = useState(true);
   const formatNumber = (num) => num ? parseInt(num).toLocaleString() : '0';
   const truncateAddress = (addr) => !addr ? '' : addr.length > 10 ? addr.substring(0, 10) + '...' : addr;
 
-  const handleAddBeliever = () => {
+  const handleAddBeliever = async () => {
     if (!formData.name || !formData.phone) {
       alert('이름과 전화번호는 필수입니다.');
       return;
     }
     
-    const bulsaArray = newBulsaData.content && newBulsaData.amount && newBulsaData.person 
-      ? [{ ...newBulsaData }] : [];
+    setIsUploading(true);
     
-    const { unpaid } = calcTotals(bulsaArray, []);
-    const newBeliever = { id: Date.now().toString(), ...formData, bulsa: bulsaArray, deposits: [], unpaid };
-    
-    const updatedBelievers = [...believers, newBeliever];
-    setBelievers(updatedBelievers);
-    saveBelievers(updatedBelievers);
-    alert('새 신도가 추가되었습니다.');
-    
-    setFormData(emptyForm);
-    setNewBulsaData(emptyBulsa);
-    setShowAddForm(false);
+    try {
+      const bulsaArray = newBulsaData.content && newBulsaData.amount && newBulsaData.person 
+        ? [{ ...newBulsaData }] : [];
+      
+      const { unpaid } = calcTotals(bulsaArray, []);
+      const believerId = Date.now().toString();
+      
+      // 사진이 있으면 업로드
+      let photoURL = null;
+      if (photoFile) {
+        photoURL = await uploadPhoto(photoFile, believerId);
+      }
+      
+      const newBeliever = { 
+        id: believerId, 
+        ...formData, 
+        bulsa: bulsaArray, 
+        deposits: [], 
+        unpaid,
+        photoURL: photoURL || ''
+      };
+      
+      const updatedBelievers = [...believers, newBeliever];
+      setBelievers(updatedBelievers);
+      await saveBelievers(updatedBelievers);
+      
+      alert('새 신도가 추가되었습니다.');
+      
+      setFormData(emptyForm);
+      setNewBulsaData(emptyBulsa);
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setShowAddForm(false);
+    } catch (error) {
+      alert('신도 추가에 실패했습니다: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleEdit = (believer) => {
@@ -327,59 +412,59 @@ const [showInstallButton, setShowInstallButton] = useState(true);
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
- const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
   const filteredBelievers = believers.filter(b => {
-  if (!searchTerm) return true;
-  
-  // 검색어를 공백으로 분리
-  const searchParts = searchTerm.trim().split(/\s+/);
-  
-  // 크기 키워드 추출 (공백으로 구분된 경우만)
-  const sizeKeywords = [];
-  let textSearchParts = [];
-  
-  searchParts.forEach(part => {
-    const lowerPart = part.toLowerCase();
-    if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
-      sizeKeywords.push(part);
-    } else {
-      textSearchParts.push(part);
+    if (!searchTerm) return true;
+    
+    // 검색어를 공백으로 분리
+    const searchParts = searchTerm.trim().split(/\s+/);
+    
+    // 크기 키워드 추출 (공백으로 구분된 경우만)
+    const sizeKeywords = [];
+    let textSearchParts = [];
+    
+    searchParts.forEach(part => {
+      const lowerPart = part.toLowerCase();
+      if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+        sizeKeywords.push(part);
+      } else {
+        textSearchParts.push(part);
+      }
+    });
+    
+    // 각 텍스트 검색어가 모두 매칭되는지 확인 (AND 조건)
+    const allTextMatches = textSearchParts.every(searchWord => {
+      const lowerSearchWord = searchWord.toLowerCase();
+      
+      // 이름 매칭
+      const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
+      
+      // 전화번호 매칭
+      const phoneMatch = (b.phone || '').includes(searchWord);
+      
+      // 불사내용 매칭
+      const bulsaContentMatch = (b.bulsa || []).some(item => 
+        (item.content || '').toLowerCase().includes(lowerSearchWord)
+      );
+      
+      // 이름, 전화번호, 불사내용 중 하나라도 매칭되면 OK
+      return nameMatch || phoneMatch || bulsaContentMatch;
+    });
+    
+    // 크기 검색이 없으면 텍스트 매칭만으로 충분
+    if (sizeKeywords.length === 0) {
+      return allTextMatches;
     }
-  });
-  
-  // 각 텍스트 검색어가 모두 매칭되는지 확인 (AND 조건)
-  const allTextMatches = textSearchParts.every(searchWord => {
-    const lowerSearchWord = searchWord.toLowerCase();
     
-    // 이름 매칭
-    const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
-    
-    // 전화번호 매칭
-    const phoneMatch = (b.phone || '').includes(searchWord);
-    
-    // 불사내용 매칭
-    const bulsaContentMatch = (b.bulsa || []).some(item => 
-      (item.content || '').toLowerCase().includes(lowerSearchWord)
+    // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
+    const hasBulsaWithSize = (b.bulsa || []).some(item => 
+      sizeKeywords.includes(item.size)
     );
     
-    // 이름, 전화번호, 불사내용 중 하나라도 매칭되면 OK
-    return nameMatch || phoneMatch || bulsaContentMatch;
+    return allTextMatches && hasBulsaWithSize;
   });
-  
-  // 크기 검색이 없으면 텍스트 매칭만으로 충분
-  if (sizeKeywords.length === 0) {
-    return allTextMatches;
-  }
-  
-  // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
-  const hasBulsaWithSize = (b.bulsa || []).some(item => 
-    sizeKeywords.includes(item.size)
-  );
-  
-  return allTextMatches && hasBulsaWithSize;
-});
 
   // 검색된 신도들의 총합계 계산
   const searchTotals = filteredBelievers.reduce((totals, believer) => {
@@ -553,7 +638,22 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                     <tbody>
                       {filteredBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">{believer.name}</td>
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              {believer.photoURL ? (
+                                <img 
+                                  src={believer.photoURL} 
+                                  alt={believer.name}
+                                  className="w-8 h-8 rounded-full object-cover border-2 border-amber-300"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-700 font-bold text-xs">
+                                  {believer.name.charAt(0)}
+                                </div>
+                              )}
+                              <span>{believer.name}</span>
+                            </div>
+                          </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap">{believer.phone}</td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap hidden sm:table-cell">{truncateAddress(believer.address)}</td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
@@ -605,83 +705,84 @@ const [showInstallButton, setShowInstallButton] = useState(true);
               </div>
             )}
           </div>
+          
           {/* 검색 결과 총합계 - 세로 배치 */}
-            {filteredBelievers.length > 0 && (
-              <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
-                <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
-                  📊 검색 결과 총합계 ({filteredBelievers.length}명)
-                </h3>
-                
-                <div className="space-y-3">
-                  {/* 총 불사금액 */}
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl sm:text-3xl">🙏</span>
-                        <span className="text-sm sm:text-base font-bold text-gray-700">총 불사금액</span>
-                      </div>
-                      <div className="text-xl sm:text-3xl font-bold text-blue-600">
-                        {formatNumber(searchTotals.totalBulsa)}
-                        <span className="text-sm sm:text-base ml-1">만원</span>
-                      </div>
+          {filteredBelievers.length > 0 && (
+            <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
+              <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
+                📊 검색 결과 총합계 ({filteredBelievers.length}명)
+              </h3>
+              
+              <div className="space-y-3">
+                {/* 총 불사금액 */}
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl sm:text-3xl">🙏</span>
+                      <span className="text-sm sm:text-base font-bold text-gray-700">총 불사금액</span>
                     </div>
-                  </div>
-
-                  {/* 총 입금액 */}
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl sm:text-3xl">💰</span>
-                        <span className="text-sm sm:text-base font-bold text-gray-700">총 입금액</span>
-                      </div>
-                      <div className="text-xl sm:text-3xl font-bold text-green-600">
-                        {formatNumber(searchTotals.totalDeposit)}
-                        <span className="text-sm sm:text-base ml-1">만원</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 총 미수금 */}
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-red-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl sm:text-3xl">📋</span>
-                        <span className="text-sm sm:text-base font-bold text-gray-700">총 미수금</span>
-                      </div>
-                      <div className="text-xl sm:text-3xl font-bold text-red-600">
-                        {formatNumber(searchTotals.totalUnpaid)}
-                        <span className="text-sm sm:text-base ml-1">만원</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 입금률 */}
-                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-amber-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl sm:text-3xl">📊</span>
-                        <span className="text-sm sm:text-base font-bold text-gray-700">입금률</span>
-                      </div>
-                      <span className="text-xl sm:text-3xl font-bold text-amber-700">
-                        {searchTotals.totalBulsa > 0 
-                          ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1)
-                          : 0}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
-                      <div 
-                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${searchTotals.totalBulsa > 0 
-                            ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100)
-                            : 0}%`
-                        }}
-                      ></div>
+                    <div className="text-xl sm:text-3xl font-bold text-blue-600">
+                      {formatNumber(searchTotals.totalBulsa)}
+                      <span className="text-sm sm:text-base ml-1">만원</span>
                     </div>
                   </div>
                 </div>
+
+                {/* 총 입금액 */}
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl sm:text-3xl">💰</span>
+                      <span className="text-sm sm:text-base font-bold text-gray-700">총 입금액</span>
+                    </div>
+                    <div className="text-xl sm:text-3xl font-bold text-green-600">
+                      {formatNumber(searchTotals.totalDeposit)}
+                      <span className="text-sm sm:text-base ml-1">만원</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 총 미수금 */}
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-red-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl sm:text-3xl">📋</span>
+                      <span className="text-sm sm:text-base font-bold text-gray-700">총 미수금</span>
+                    </div>
+                    <div className="text-xl sm:text-3xl font-bold text-red-600">
+                      {formatNumber(searchTotals.totalUnpaid)}
+                      <span className="text-sm sm:text-base ml-1">만원</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 입금률 */}
+                <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-amber-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl sm:text-3xl">📊</span>
+                      <span className="text-sm sm:text-base font-bold text-gray-700">입금률</span>
+                    </div>
+                    <span className="text-xl sm:text-3xl font-bold text-amber-700">
+                      {searchTotals.totalBulsa > 0 
+                        ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1)
+                        : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${searchTotals.totalBulsa > 0 
+                          ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100)
+                          : 0}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+          )}
         </div>
 
         {showAddForm && userRole === 'admin' && (
@@ -690,11 +791,69 @@ const [showInstallButton, setShowInstallButton] = useState(true);
               <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
               
               <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
-                <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">기본 정보</h3>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
+                  
+                  {/* 사진 업로드 버튼들 */}
+                  {!photoPreview && (
+                    <div className="flex gap-2">
+                      {/* 카메라 촬영 버튼 */}
+                      <label className="cursor-pointer" title="카메라로 촬영">
+                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
+                          <span className="text-xl">📷</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                      
+                      {/* 갤러리 선택 버튼 */}
+                      <label className="cursor-pointer" title="갤러리에서 선택">
+                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
+                          <span className="text-xl">📁</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* 사진 미리보기 */}
+                {photoPreview && (
+                  <div className="mb-3 sm:mb-4">
+                    <div className="relative">
+                      <img 
+                        src={photoPreview} 
+                        alt="미리보기" 
+                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={handlePhotoRemove}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-2">
+                      사진 선택됨 (×를 눌러 변경)
+                    </p>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">이름 *</label>
-                   <input
+                    <input
                       type="text"
                       name="name"
                       value={formData.name}
@@ -711,7 +870,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">전화번호 *</label>
-                   <input
+                    <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
@@ -729,7 +888,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">주소</label>
-                   <input
+                    <input
                       type="text"
                       name="address"
                       value={formData.address}
@@ -768,7 +927,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">불사금액 (만원)</label>
-                   <input
+                    <input
                       type="number"
                       value={newBulsaData.amount}
                       onChange={(e) => setNewBulsaData({...newBulsaData, amount: e.target.value})}
@@ -821,7 +980,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
                   <div className="md:col-span-2">
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">봉안위치</label>
-                   <input
+                    <input
                       type="text"
                       value={newBulsaData.location}
                       onChange={(e) => setNewBulsaData({...newBulsaData, location: e.target.value})}
@@ -841,12 +1000,17 @@ const [showInstallButton, setShowInstallButton] = useState(true);
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
                 <button
                   onClick={handleAddBeliever}
-                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all"
+                  disabled={isUploading}
+                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  추가하기
+                  {isUploading ? '업로드 중...' : '추가하기'}
                 </button>
                 <button
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setPhotoFile(null);
+                    setPhotoPreview(null);
+                  }}
                   className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold"
                 >
                   취소
@@ -873,10 +1037,10 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                     <div key={idx} className="flex justify-between items-center py-2 border-b border-amber-200 last:border-0">
                       <div className="flex-1">
                         {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-<span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
-<span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
-<span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
-{b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+                        <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+                        {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                       </div>
                       {userRole === 'admin' && (
                         <div className="flex gap-2">
