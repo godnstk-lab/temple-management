@@ -865,11 +865,11 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                   {selectedBeliever.bulsa.map((b, idx) => (
                     <div key={idx} className="flex justify-between items-center py-2 border-b border-amber-200 last:border-0">
                       <div className="flex-1">
-                        <span className="font-semibold text-gray-800 text-sm sm:text-base">{b.content}</span>
-                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
-                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
-                        {b.size && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">[{b.size}]</span>}
-                        {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+                        {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
+<span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+<span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+<span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+{b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                       </div>
                       {userRole === 'admin' && (
                         <div className="flex gap-2">
