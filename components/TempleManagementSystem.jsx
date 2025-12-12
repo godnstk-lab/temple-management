@@ -334,11 +334,28 @@ const filteredBelievers = believers.filter(b => {
   if (!searchTerm) return true;
   
   // 검색어에서 크기 키워드 추출 (소, 중, 대)
-  const sizeKeywords = [];
-  if (searchTerm.includes('소')) sizeKeywords.push('소');
-  if (searchTerm.includes('중')) sizeKeywords.push('중');
-  if (searchTerm.includes('대')) sizeKeywords.push('대');
+ const filteredBelievers = believers.filter(b => {
+  if (!searchTerm) return true;
   
+  // 검색어를 공백으로 분리
+  const searchParts = searchTerm.trim().split(/\s+/);
+  
+  // 크기 키워드 추출 (공백으로 구분된 경우만)
+  const sizeKeywords = [];
+  let textSearchParts = [];
+  
+  searchParts.forEach(part => {
+    const lowerPart = part.toLowerCase();
+    if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+      sizeKeywords.push(part);
+    } else {
+      textSearchParts.push(part);
+    }
+  });
+  
+  // 텍스트 검색어 (크기 제외)
+  const textSearch = textSearchParts.join(' ').toLowerCase();
+   
   // 크기 키워드를 제거한 나머지 검색어 (이름/전화번호/불사내용 검색용)
   let textSearch = searchTerm;
   sizeKeywords.forEach(size => {
