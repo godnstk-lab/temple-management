@@ -327,52 +327,52 @@ const [showInstallButton, setShowInstallButton] = useState(true);
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+ const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
- const filteredBelievers = believers.filter(b => {
-  if (!searchTerm) return true;
-  
-  // 검색어를 공백으로 분리
-  const searchParts = searchTerm.trim().split(/\s+/);
-  
-  // 크기 키워드 추출 (공백으로 구분된 경우만)
-  const sizeKeywords = [];
-  let textSearchParts = [];
-  
-  searchParts.forEach(part => {
-    const lowerPart = part.toLowerCase();
-    if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
-      sizeKeywords.push(part);
-    } else {
-      textSearchParts.push(part);
+  const filteredBelievers = believers.filter(b => {
+    if (!searchTerm) return true;
+    
+    // 검색어를 공백으로 분리
+    const searchParts = searchTerm.trim().split(/\s+/);
+    
+    // 크기 키워드 추출 (공백으로 구분된 경우만)
+    const sizeKeywords = [];
+    let textSearchParts = [];
+    
+    searchParts.forEach(part => {
+      const lowerPart = part.toLowerCase();
+      if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+        sizeKeywords.push(part);
+      } else {
+        textSearchParts.push(part);
+      }
+    });
+    
+    // 텍스트 검색어 (크기 제외)
+    const textSearch = textSearchParts.join(' ').toLowerCase();
+    
+    // 이름, 전화번호, 불사내용 매칭
+    const nameMatch = textSearch === '' || (b.name || '').toLowerCase().includes(textSearch);
+    const phoneMatch = textSearch === '' || (b.phone || '').includes(textSearch);
+    const bulsaContentMatch = textSearch === '' || (b.bulsa || []).some(item => 
+      (item.content || '').toLowerCase().includes(textSearch)
+    );
+    
+    const textMatches = nameMatch || phoneMatch || bulsaContentMatch;
+    
+    // 크기 검색이 없으면 텍스트 매칭만으로 충분
+    if (sizeKeywords.length === 0) {
+      return textMatches;
     }
+    
+    // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
+    const hasBulsaWithSize = (b.bulsa || []).some(item => 
+      sizeKeywords.includes(item.size)
+    );
+    
+    return textMatches && hasBulsaWithSize;
   });
-  
-  // 텍스트 검색어 (크기 제외)
-  const textSearch = textSearchParts.join(' ').toLowerCase();
-  
-  // 이름, 전화번호, 불사내용 매칭
-  const nameMatch = textSearch === '' || (b.name || '').toLowerCase().includes(textSearch);
-  const phoneMatch = textSearch === '' || (b.phone || '').includes(textSearch);
-  const bulsaContentMatch = textSearch === '' || (b.bulsa || []).some(item => 
-    (item.content || '').toLowerCase().includes(textSearch)
-  );
-  
-  const textMatches = nameMatch || phoneMatch || bulsaContentMatch;
-  
-  // 크기 검색이 없으면 텍스트 매칭만으로 충분
-  if (sizeKeywords.length === 0) {
-    return textMatches;
-  }
-  
-  // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
-  const hasBulsaWithSize = (b.bulsa || []).some(item => 
-    sizeKeywords.includes(item.size)
-  );
-  
-  return textMatches && hasBulsaWithSize;
-});
 
   // 검색된 신도들의 총합계 계산
   const searchTotals = filteredBelievers.reduce((totals, believer) => {
