@@ -687,34 +687,52 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">이름 *</label>
-                    <input
+                   <input
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[name="phone"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">전화번호 *</label>
-                    <input
+                   <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="010-0000-0000"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[name="address"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">주소</label>
-                    <input
+                   <input
                       type="text"
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="예: 용두관음"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
@@ -731,17 +749,29 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                       value={newBulsaData.content}
                       onChange={(e) => setNewBulsaData({...newBulsaData, content: e.target.value})}
                       placeholder="예: 용두관음"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[type="number"][placeholder="0"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">불사금액 (만원)</label>
-                    <input
+                   <input
                       type="number"
                       value={newBulsaData.amount}
                       onChange={(e) => setNewBulsaData({...newBulsaData, amount: e.target.value})}
                       placeholder="0"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="OO생-홍길동"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -753,6 +783,12 @@ const [showInstallButton, setShowInstallButton] = useState(true);
                       value={newBulsaData.person}
                       onChange={(e) => setNewBulsaData({...newBulsaData, person: e.target.value})}
                       placeholder="OO생-홍길동"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="예: 1층 동쪽"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -778,11 +814,17 @@ const [showInstallButton, setShowInstallButton] = useState(true);
 
                   <div className="md:col-span-2">
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">봉안위치</label>
-                    <input
+                   <input
                       type="text"
                       value={newBulsaData.location}
                       onChange={(e) => setNewBulsaData({...newBulsaData, location: e.target.value})}
                       placeholder="예: 1층 동쪽"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddBeliever();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
