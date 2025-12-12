@@ -330,9 +330,7 @@ const [showInstallButton, setShowInstallButton] = useState(true);
   const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
-const filteredBelievers = believers.filter(b => {
-  if (!searchTerm) return true;
-  
+
   // 검색어에서 크기 키워드 추출 (소, 중, 대)
  const filteredBelievers = believers.filter(b => {
   if (!searchTerm) return true;
@@ -355,13 +353,6 @@ const filteredBelievers = believers.filter(b => {
   
   // 텍스트 검색어 (크기 제외)
   const textSearch = textSearchParts.join(' ').toLowerCase();
-   
-  // 크기 키워드를 제거한 나머지 검색어 (이름/전화번호/불사내용 검색용)
-  let textSearch = searchTerm;
-  sizeKeywords.forEach(size => {
-    textSearch = textSearch.replace(size, '');
-  });
-  textSearch = textSearch.trim().toLowerCase();
   
   // 이름, 전화번호, 불사내용 매칭
   const nameMatch = textSearch === '' || (b.name || '').toLowerCase().includes(textSearch);
