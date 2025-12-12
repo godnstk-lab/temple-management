@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue } from 'firebase/database';
+import { getDatabase, ref, set, onValue } from 'firebase/database';
 
-// Firebase 설정 (나중에 본인의 Firebase 프로젝트 정보로 교체해야 합니다)
+// Firebase 설정
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBt-2DpZfQVM35YBajQEJI0D8LSN1HzL_4",
+  authDomain: "temple-management-49ae1.firebaseapp.com",
+  databaseURL: "https://temple-management-49ae1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "temple-management-49ae1",
+  storageBucket: "temple-management-49ae1.firebasestorage.app",
+  messagingSenderId: "753617201876",
+  appId: "1:753617201876:web:6ebd3c15c76dd3db536941"
 };
 
 // Firebase 초기화
@@ -30,6 +30,10 @@ export default function TempleManagementSystem() {
   const [selectedBeliever, setSelectedBeliever] = useState(null);
   const [showBulsaPopup, setShowBulsaPopup] = useState(false);
   const [showDepositPopup, setShowDepositPopup] = useState(false);
+  const [showBulsaEditPopup, setShowBulsaEditPopup] = useState(false);
+  const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+const [showInstallButton, setShowInstallButton] = useState(true);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '' };
@@ -39,6 +43,7 @@ export default function TempleManagementSystem() {
   const [newBulsaData, setNewBulsaData] = useState(emptyBulsa);
   const [bulsaForm, setBulsaForm] = useState(emptyBulsa);
   const [depositForm, setDepositForm] = useState(emptyDeposit);
+  const [editBulsaForm, setEditBulsaForm] = useState(emptyBulsa);
 
   useEffect(() => {
     // Firebase 실시간 리스너 설정
@@ -58,6 +63,51 @@ export default function TempleManagementSystem() {
 
     return () => unsubscribe();
   }, []);
+  useEffect(() => {
+    // PWA 설치 이벤트 리스너
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // 이미 설치되었는지 확인
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallButton(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      // iOS나 설치 프롬프트가 없을 때 안내
+      alert('📱 홈 화면에 추가하는 방법:\n\n' +
+            'iPhone (Safari):\n' +
+            '1. 하단 공유 버튼 (□↑) 탭\n' +
+            '2. "홈 화면에 추가" 선택\n' +
+            '3. "추가" 탭\n\n' +
+            'Android (Chrome):\n' +
+            '1. 우측 상단 점 3개 (⋮) 탭\n' +
+            '2. "홈 화면에 추가" 선택\n' +
+            '3. "추가" 탭');
+      return;
+    }
+
+    // 안드로이드 Chrome PWA 설치
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setShowInstallButton(false);
+    }
+    
+    setDeferredPrompt(null);
+  };
 
   const saveBelievers = async (newBelievers) => {
     try {
@@ -74,14 +124,12 @@ export default function TempleManagementSystem() {
   };
 
   const handleLogin = () => {
-    if (loginPassword === '0804') {
+    if (loginPassword === '1023') {
       setIsLoggedIn(true);
       setUserRole('admin');
-      alert('관리자로 로그인되었습니다.');
-    } else if (loginPassword === '1211') {
+    } else if (loginPassword === '0804') {
       setIsLoggedIn(true);
       setUserRole('user');
-      alert('일반 사용자로 로그인되었습니다.');
     } else {
       alert('비밀번호가 올바르지 않습니다.');
     }
@@ -206,6 +254,37 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
+  const openBulsaEditPopup = (index) => {
+    setEditingBulsaIndex(index);
+    setEditBulsaForm({ ...selectedBeliever.bulsa[index] });
+    setShowBulsaEditPopup(true);
+  };
+
+  const confirmBulsaEdit = () => {
+    if (!editBulsaForm.content || !editBulsaForm.amount || !editBulsaForm.person) {
+      alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
+      return;
+    }
+
+    const updatedBelievers = believers.map(b => {
+      if (b.id === selectedBeliever.id) {
+        const newBulsa = [...b.bulsa];
+        newBulsa[editingBulsaIndex] = { ...editBulsaForm };
+        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+        return { ...b, bulsa: newBulsa, unpaid };
+      }
+      return b;
+    });
+
+    setBelievers(updatedBelievers);
+    saveBelievers(updatedBelievers);
+    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+    alert('불사내용이 수정되었습니다.');
+    setShowBulsaEditPopup(false);
+    setEditingBulsaIndex(null);
+    setEditBulsaForm(emptyBulsa);
+  };
+
   const openDepositPopup = (believer) => {
     setSelectedBeliever(believer);
     setDepositForm(emptyDeposit);
@@ -248,19 +327,81 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+ const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
   const filteredBelievers = believers.filter(b => {
     if (!searchTerm) return true;
-    const lower = searchTerm.toLowerCase();
-    const bulsaText = (b.bulsa || []).map(item => (item.content || '').toLowerCase()).join(' ');
-    return (b.name || '').toLowerCase().includes(lower) || (b.phone || '').includes(searchTerm) || bulsaText.includes(lower);
+    
+    // 검색어를 공백으로 분리
+    const searchParts = searchTerm.trim().split(/\s+/);
+    
+    // 크기 키워드 추출 (공백으로 구분된 경우만)
+    const sizeKeywords = [];
+    let textSearchParts = [];
+    
+    searchParts.forEach(part => {
+      const lowerPart = part.toLowerCase();
+      if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+        sizeKeywords.push(part);
+      } else {
+        textSearchParts.push(part);
+      }
+    });
+    
+    // 텍스트 검색어 (크기 제외)
+    const textSearch = textSearchParts.join(' ').toLowerCase();
+    
+    // 이름, 전화번호, 불사내용 매칭
+    const nameMatch = textSearch === '' || (b.name || '').toLowerCase().includes(textSearch);
+    const phoneMatch = textSearch === '' || (b.phone || '').includes(textSearch);
+    const bulsaContentMatch = textSearch === '' || (b.bulsa || []).some(item => 
+      (item.content || '').toLowerCase().includes(textSearch)
+    );
+    
+    const textMatches = nameMatch || phoneMatch || bulsaContentMatch;
+    
+    // 크기 검색이 없으면 텍스트 매칭만으로 충분
+    if (sizeKeywords.length === 0) {
+      return textMatches;
+    }
+    
+    // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
+    const hasBulsaWithSize = (b.bulsa || []).some(item => 
+      sizeKeywords.includes(item.size)
+    );
+    
+    return textMatches && hasBulsaWithSize;
   });
+
+  // 검색된 신도들의 총합계 계산
+  const searchTotals = filteredBelievers.reduce((totals, believer) => {
+    const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
+    const depositTotal = getTotalDepositAmount(believer.deposits || []);
+    const unpaidTotal = parseInt(believer.unpaid || 0);
+    
+    return {
+      totalBulsa: totals.totalBulsa + bulsaTotal,
+      totalDeposit: totals.totalDeposit + depositTotal,
+      totalUnpaid: totals.totalUnpaid + unpaidTotal
+    };
+  }, { totalBulsa: 0, totalDeposit: 0, totalUnpaid: 0 });
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
+        {/* 설치 버튼 - 우측 상단 */}
+        {showInstallButton && (
+          <button
+            onClick={handleInstallClick}
+            className="fixed top-4 right-4 z-50 bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 font-bold text-sm transition-all animate-pulse"
+            style={{top: 'max(1rem, env(safe-area-inset-top))', right: 'max(1rem, env(safe-area-inset-right))'}}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">앱 설치</span>
+            <span className="sm:hidden">설치</span>
+          </button>
+        )}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwgMjUxLCAyMzUsIDAuMSkiLz48L2c+PC9zdmc+')] opacity-30"></div>
         <div className="absolute top-0 left-0 w-full h-full">
           <div className="absolute top-10 left-10 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl"></div>
@@ -320,7 +461,7 @@ export default function TempleManagementSystem() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 overflow-y-auto" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
       <div className="w-full">
         <div className="bg-gradient-to-r from-amber-600 to-orange-700 shadow-xl border-b-4 border-amber-800">
           <div className="max-w-full px-4 sm:px-8 py-4 sm:py-6">
@@ -457,6 +598,83 @@ export default function TempleManagementSystem() {
               </div>
             )}
           </div>
+          {/* 검색 결과 총합계 - 세로 배치 */}
+            {filteredBelievers.length > 0 && (
+              <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
+                <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
+                  📊 검색 결과 총합계 ({filteredBelievers.length}명)
+                </h3>
+                
+                <div className="space-y-3">
+                  {/* 총 불사금액 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">🙏</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 불사금액</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-blue-600">
+                        {formatNumber(searchTotals.totalBulsa)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 총 입금액 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">💰</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 입금액</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-green-600">
+                        {formatNumber(searchTotals.totalDeposit)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 총 미수금 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-red-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">📋</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">총 미수금</span>
+                      </div>
+                      <div className="text-xl sm:text-3xl font-bold text-red-600">
+                        {formatNumber(searchTotals.totalUnpaid)}
+                        <span className="text-sm sm:text-base ml-1">만원</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 입금률 */}
+                  <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl sm:text-3xl">📊</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-700">입금률</span>
+                      </div>
+                      <span className="text-xl sm:text-3xl font-bold text-amber-700">
+                        {searchTotals.totalBulsa > 0 
+                          ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1)
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${searchTotals.totalBulsa > 0 
+                            ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100)
+                            : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
 
         {showAddForm && userRole === 'admin' && (
@@ -469,34 +687,52 @@ export default function TempleManagementSystem() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">이름 *</label>
-                    <input
+                   <input
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[name="phone"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">전화번호 *</label>
-                    <input
+                   <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="010-0000-0000"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[name="address"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">주소</label>
-                    <input
+                   <input
                       type="text"
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="예: 용두관음"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                   </div>
@@ -513,17 +749,29 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.content}
                       onChange={(e) => setNewBulsaData({...newBulsaData, content: e.target.value})}
                       placeholder="예: 용두관음"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[type="number"][placeholder="0"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">불사금액 (만원)</label>
-                    <input
+                   <input
                       type="number"
                       value={newBulsaData.amount}
                       onChange={(e) => setNewBulsaData({...newBulsaData, amount: e.target.value})}
                       placeholder="0"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="OO생-홍길동"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -535,6 +783,12 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.person}
                       onChange={(e) => setNewBulsaData({...newBulsaData, person: e.target.value})}
                       placeholder="OO생-홍길동"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.querySelector('input[placeholder="예: 1층 동쪽"]').focus();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -560,11 +814,17 @@ export default function TempleManagementSystem() {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">봉안위치</label>
-                    <input
+                   <input
                       type="text"
                       value={newBulsaData.location}
                       onChange={(e) => setNewBulsaData({...newBulsaData, location: e.target.value})}
                       placeholder="예: 1층 동쪽"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddBeliever();
+                        }
+                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -605,19 +865,27 @@ export default function TempleManagementSystem() {
                   {selectedBeliever.bulsa.map((b, idx) => (
                     <div key={idx} className="flex justify-between items-center py-2 border-b border-amber-200 last:border-0">
                       <div className="flex-1">
-                        {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-                        <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+                        <span className="font-semibold text-gray-800 text-sm sm:text-base">{b.content}</span>
                         <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
                         <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+                        {b.size && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">[{b.size}]</span>}
                         {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                       </div>
                       {userRole === 'admin' && (
-                        <button
-                          onClick={() => deleteBulsa(selectedBeliever.id, idx)}
-                          className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors ml-2 sm:ml-4"
-                        >
-                          삭제
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openBulsaEditPopup(idx)}
+                            className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => deleteBulsa(selectedBeliever.id, idx)}
+                            className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -719,6 +987,110 @@ export default function TempleManagementSystem() {
                   닫기
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {showBulsaEditPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
+                <button 
+                  onClick={() => {
+                    setShowBulsaEditPopup(false);
+                    setEditingBulsaIndex(null);
+                    setEditBulsaForm(emptyBulsa);
+                  }} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사내용 *</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.content}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, content: e.target.value})}
+                    placeholder="예: 용두관음"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사금액 (만원) *</label>
+                  <input
+                    type="number"
+                    value={editBulsaForm.amount}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, amount: e.target.value})}
+                    placeholder="0"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안자/복위자 *</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.person}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, person: e.target.value})}
+                    placeholder="OO생-홍길동"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
+                  <div className="flex gap-2">
+                    {['소', '중', '대'].map(size => (
+                      <button
+                        key={size}
+                        onClick={() => setEditBulsaForm({...editBulsaForm, size})}
+                        className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
+                          editBulsaForm.size === size 
+                            ? 'bg-amber-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안위치</label>
+                  <input
+                    type="text"
+                    value={editBulsaForm.location}
+                    onChange={(e) => setEditBulsaForm({...editBulsaForm, location: e.target.value})}
+                    placeholder="예: 1층 동쪽"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <button
+                  onClick={confirmBulsaEdit}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
+                >
+                  수정 완료
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBulsaEditPopup(false);
+                    setEditingBulsaIndex(null);
+                    setEditBulsaForm(emptyBulsa);
+                  }}
+                  className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
+                >
+                  취소
+                </button>
+              </div>
             </div>
           </div>
         )}
