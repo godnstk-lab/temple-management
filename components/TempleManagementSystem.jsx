@@ -330,8 +330,6 @@ const [showInstallButton, setShowInstallButton] = useState(true);
   const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
-
-  // 검색어에서 크기 키워드 추출 (소, 중, 대)
  const filteredBelievers = believers.filter(b => {
   if (!searchTerm) return true;
   
