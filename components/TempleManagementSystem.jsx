@@ -124,10 +124,10 @@ const [showInstallButton, setShowInstallButton] = useState(true);
   };
 
   const handleLogin = () => {
-    if (loginPassword === '0804') {
+    if (loginPassword === '1023') {
       setIsLoggedIn(true);
       setUserRole('admin');
-    } else if (loginPassword === '1023') {
+    } else if (loginPassword === '0804') {
       setIsLoggedIn(true);
       setUserRole('user');
     } else {
