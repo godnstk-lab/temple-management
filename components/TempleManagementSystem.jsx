@@ -625,8 +625,6 @@ export default function TempleManagementSystem() {
                     <thead>
                       <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">이름</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">전화번호</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap hidden sm:table-cell">주소</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">불사내용</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">입금액</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">미수금</th>
@@ -639,23 +637,17 @@ export default function TempleManagementSystem() {
                       {filteredBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              {believer.photoURL ? (
-                                <img 
-                                  src={believer.photoURL} 
-                                  alt={believer.name}
-                                  className="w-8 h-8 rounded-full object-cover border-2 border-amber-300"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-700 font-bold text-xs">
-                                  {believer.name.charAt(0)}
-                                </div>
-                              )}
+                            {userRole === 'admin' ? (
+                              <button
+                                onClick={() => handleEdit(believer)}
+                                className="text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
+                              >
+                                {believer.name}
+                              </button>
+                            ) : (
                               <span>{believer.name}</span>
-                            </div>
+                            )}
                           </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap">{believer.phone}</td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap hidden sm:table-cell">{truncateAddress(believer.address)}</td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
                             <button
                               onClick={() => openBulsaPopup(believer)}
@@ -682,12 +674,6 @@ export default function TempleManagementSystem() {
                           {userRole === 'admin' && (
                             <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1 sm:gap-2">
-                                <button
-                                  onClick={() => handleEdit(believer)}
-                                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors text-xs sm:text-sm"
-                                >
-                                  수정
-                                </button>
                                 <button
                                   onClick={() => handleDelete(believer)}
                                   className="px-2 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-xs sm:text-sm"
@@ -791,64 +777,7 @@ export default function TempleManagementSystem() {
               <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
               
               <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
-                  
-                  {/* 사진 업로드 버튼들 */}
-                  {!photoPreview && (
-                    <div className="flex gap-2">
-                      {/* 카메라 촬영 버튼 */}
-                      <label className="cursor-pointer" title="카메라로 촬영">
-                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
-                          <span className="text-xl">📷</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handlePhotoChange}
-                          className="hidden"
-                        />
-                      </label>
-                      
-                      {/* 갤러리 선택 버튼 */}
-                      <label className="cursor-pointer" title="갤러리에서 선택">
-                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
-                          <span className="text-xl">📁</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoChange}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* 사진 미리보기 */}
-                {photoPreview && (
-                  <div className="mb-3 sm:mb-4">
-                    <div className="relative">
-                      <img 
-                        src={photoPreview} 
-                        alt="미리보기" 
-                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={handlePhotoRemove}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-2">
-                      사진 선택됨 (×를 눌러 변경)
-                    </p>
-                  </div>
-                )}
+                <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">기본 정보</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
