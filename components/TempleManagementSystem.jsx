@@ -244,7 +244,19 @@ export default function TempleManagementSystem() {
     return { totalBulsa, totalDeposit, unpaid: String(totalBulsa - totalDeposit) };
   };
   
-  const formatNumber = (num) => num ? parseInt(num).toLocaleString() : '0';
+  const formatNumber = (num) => {
+    if (!num) return '0';
+    const value = parseInt(num);
+    if (value >= 10000) {
+      const eok = Math.floor(value / 10000);
+      const man = value % 10000;
+      if (man === 0) {
+        return `${eok}억`;
+      }
+      return `${eok}억${man.toLocaleString()}`;
+    }
+    return value.toLocaleString();
+  };
   const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
@@ -613,7 +625,7 @@ export default function TempleManagementSystem() {
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
                             {userRole === 'admin' ? (
-                              <button onClick={() => handleEdit(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer">{believer.name}</button>
+                              <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">{believer.name}</button>
                             ) : (
                               <span>{believer.name}</span>
                             )}
@@ -622,7 +634,9 @@ export default function TempleManagementSystem() {
                             <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
                               {believer.bulsa && believer.bulsa.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
-                                  <span className="text-sm font-bold">{formatNumber(getTotalBulsaAmount(believer.bulsa))}만</span>
+                                  <span className="text-sm font-bold">
+                                    {formatNumber(getTotalBulsaAmount(believer.bulsa))}{getTotalBulsaAmount(believer.bulsa) >= 10000 ? '원' : '만'}
+                                  </span>
                                   <span className="text-xs text-gray-500">{believer.bulsa.length}건</span>
                                 </div>
                               ) : '없음'}
@@ -632,14 +646,16 @@ export default function TempleManagementSystem() {
                             <button onClick={() => openDepositPopup(believer)} className="text-green-600 hover:text-green-800 font-semibold underline">
                               {believer.deposits && believer.deposits.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
-                                  <span className="text-sm font-bold">{formatNumber(getTotalDepositAmount(believer.deposits))}만</span>
+                                  <span className="text-sm font-bold">
+                                    {formatNumber(getTotalDepositAmount(believer.deposits))}{getTotalDepositAmount(believer.deposits) >= 10000 ? '원' : '만'}
+                                  </span>
                                   <span className="text-xs text-gray-500">{believer.deposits.length}건</span>
                                 </div>
                               ) : '없음'}
                             </button>
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right text-red-600 font-bold whitespace-nowrap">
-                            {formatNumber(believer.unpaid)}만
+                            {formatNumber(believer.unpaid)}{parseInt(believer.unpaid || 0) >= 10000 ? '원' : '만'}
                           </td>
                           {userRole === 'admin' && (
                             <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -671,7 +687,7 @@ export default function TempleManagementSystem() {
                     </div>
                     <div className="text-xl sm:text-3xl font-bold text-blue-600">
                       {formatNumber(searchTotals.totalBulsa)}
-                      <span className="text-sm sm:text-base ml-1">만원</span>
+                      <span className="text-sm sm:text-base ml-1">{searchTotals.totalBulsa >= 10000 ? '원' : '만원'}</span>
                     </div>
                   </div>
                 </div>
@@ -683,7 +699,7 @@ export default function TempleManagementSystem() {
                     </div>
                     <div className="text-xl sm:text-3xl font-bold text-green-600">
                       {formatNumber(searchTotals.totalDeposit)}
-                      <span className="text-sm sm:text-base ml-1">만원</span>
+                      <span className="text-sm sm:text-base ml-1">{searchTotals.totalDeposit >= 10000 ? '원' : '만원'}</span>
                     </div>
                   </div>
                 </div>
@@ -695,7 +711,7 @@ export default function TempleManagementSystem() {
                     </div>
                     <div className="text-xl sm:text-3xl font-bold text-red-600">
                       {formatNumber(searchTotals.totalUnpaid)}
-                      <span className="text-sm sm:text-base ml-1">만원</span>
+                      <span className="text-sm sm:text-base ml-1">{searchTotals.totalUnpaid >= 10000 ? '원' : '만원'}</span>
                     </div>
                   </div>
                 </div>
