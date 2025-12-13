@@ -279,43 +279,9 @@ export default function TempleManagementSystem() {
   };
 
   const handleExitApp = () => {
-    // Android WebView인 경우
-    if (typeof Android !== 'undefined' && Android.exitApp) {
-      Android.exitApp();
-      return;
-    }
-    
-    // iOS WebView인 경우
-    if (typeof webkit !== 'undefined' && webkit.messageHandlers && webkit.messageHandlers.exitApp) {
-      webkit.messageHandlers.exitApp.postMessage('exit');
-      return;
-    }
-    
-    // PWA나 일반 브라우저인 경우
-    // 1. 히스토리를 최대한 뒤로 이동
-    const historyLength = window.history.length;
-    if (historyLength > 1) {
-      // 첫 페이지까지 이동
-      window.history.go(-historyLength);
-      
-      // 잠시 후 창 닫기 시도
-      setTimeout(() => {
-        window.close();
-        
-        // 창이 안 닫히면 (PWA 등) about:blank로 이동
-        setTimeout(() => {
-          window.location.href = 'about:blank';
-        }, 100);
-      }, 100);
-    } else {
-      // 히스토리가 없으면 바로 닫기 시도
-      window.close();
-      
-      // 창이 안 닫히면 about:blank로 이동
-      setTimeout(() => {
-        window.location.href = 'about:blank';
-      }, 100);
-    }
+    // 브라우저 창/탭 닫기
+    window.open('', '_self', '');
+    window.close();
   };
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
