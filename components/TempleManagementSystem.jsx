@@ -166,12 +166,9 @@ export default function TempleManagementSystem() {
   // 모바일 뒤로가기 버튼 처리
   useEffect(() => {
     const handlePopState = (e) => {
-      e.preventDefault();
-      
       // 종료 확인 팝업이 열려있으면 닫기
       if (showExitConfirm) {
         setShowExitConfirm(false);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -201,24 +198,21 @@ export default function TempleManagementSystem() {
       } else {
         // 팝업이 없으면 종료 확인 팝업 표시
         setShowExitConfirm(true);
-        window.history.pushState(null, '', window.location.href);
-        return;
       }
-      
-      // 팝업이 있었다면 히스토리 추가 (뒤로가기 막기)
-      window.history.pushState(null, '', window.location.href);
     };
-
-    // 팝업이 열릴 때마다 히스토리 추가
-    if (showAddForm || showEditPopup || showDeletePopup || showBulsaPopup || showDepositPopup || showBulsaEditPopup || viewPhotoModal || showExitConfirm) {
-      window.history.pushState(null, '', window.location.href);
-    }
 
     window.addEventListener('popstate', handlePopState);
     
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
+  }, [showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
+
+  // 팝업이 열릴 때 히스토리 추가
+  useEffect(() => {
+    if (showAddForm || showEditPopup || showDeletePopup || showBulsaPopup || showDepositPopup || showBulsaEditPopup || viewPhotoModal || showExitConfirm) {
+      window.history.pushState(null, '', window.location.href);
+    }
   }, [showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
 
   const handleInstallClick = async () => {
@@ -1082,10 +1076,7 @@ export default function TempleManagementSystem() {
                   예
                 </button>
                 <button
-                  onClick={() => {
-                    setShowExitConfirm(false);
-                    window.history.pushState(null, '', window.location.href);
-                  }}
+                  onClick={() => setShowExitConfirm(false)}
                   className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold py-3 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all text-sm sm:text-base"
                 >
                   아니오
