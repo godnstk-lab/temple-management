@@ -40,8 +40,16 @@ export default function TempleManagementSystem() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   
+  // 불사 사진 관련 state
+  const [bulsaPhotoFile, setBulsaPhotoFile] = useState(null);
+  const [bulsaPhotoPreview, setBulsaPhotoPreview] = useState(null);
+  const [editBulsaPhotoFile, setEditBulsaPhotoFile] = useState(null);
+  const [editBulsaPhotoPreview, setEditBulsaPhotoPreview] = useState(null);
+  const [viewPhotoModal, setViewPhotoModal] = useState(false);
+  const [viewPhotoUrl, setViewPhotoUrl] = useState('');
+  
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
-  const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '' };
+  const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURL: '' };
   const emptyDeposit = { date: '', amount: '' };
   
   const [formData, setFormData] = useState(emptyForm);
@@ -51,7 +59,6 @@ export default function TempleManagementSystem() {
   const [editBulsaForm, setEditBulsaForm] = useState(emptyBulsa);
 
   useEffect(() => {
-    // Firebase 실시간 리스너 설정
     const believersRef = ref(database, 'believers');
     const unsubscribe = onValue(believersRef, (snapshot) => {
       const data = snapshot.val();
@@ -65,25 +72,19 @@ export default function TempleManagementSystem() {
         setBelievers([]);
       }
     });
-
     return () => unsubscribe();
   }, []);
   
   useEffect(() => {
-    // PWA 설치 이벤트 리스너
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallButton(true);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // 이미 설치되었는지 확인
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setShowInstallButton(false);
     }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -91,27 +92,14 @@ export default function TempleManagementSystem() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // iOS나 설치 프롬프트가 없을 때 안내
-      alert('📱 홈 화면에 추가하는 방법:\n\n' +
-            'iPhone (Safari):\n' +
-            '1. 하단 공유 버튼 (□↑) 탭\n' +
-            '2. "홈 화면에 추가" 선택\n' +
-            '3. "추가" 탭\n\n' +
-            'Android (Chrome):\n' +
-            '1. 우측 상단 점 3개 (⋮) 탭\n' +
-            '2. "홈 화면에 추가" 선택\n' +
-            '3. "추가" 탭');
+      alert('📱 홈 화면에 추가하는 방법:\n\niPhone (Safari):\n1. 하단 공유 버튼 (□↑) 탭\n2. "홈 화면에 추가" 선택\n3. "추가" 탭\n\nAndroid (Chrome):\n1. 우측 상단 점 3개 (⋮) 탭\n2. "홈 화면에 추가" 선택\n3. "추가" 탭');
       return;
     }
-
-    // 안드로이드 Chrome PWA 설치
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    
     if (outcome === 'accepted') {
       setShowInstallButton(false);
     }
-    
     setDeferredPrompt(null);
   };
 
@@ -150,25 +138,18 @@ export default function TempleManagementSystem() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
-  // 사진 선택 처리
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 파일 크기 체크 (10MB 제한)
       if (file.size > 10 * 1024 * 1024) {
         alert('파일 크기는 10MB 이하여야 합니다.');
         return;
       }
-      
-      // 이미지 파일만 허용
       if (!file.type.startsWith('image/')) {
         alert('이미지 파일만 업로드 가능합니다.');
         return;
       }
-      
       setPhotoFile(file);
-      
-      // 미리보기 생성
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
@@ -177,28 +158,83 @@ export default function TempleManagementSystem() {
     }
   };
 
-  // 사진 삭제
   const handlePhotoRemove = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
   };
 
-  // Firebase Storage에 사진 업로드
+  // 불사 사진 핸들러들
+  const handleBulsaPhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('파일 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+      }
+      setBulsaPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setBulsaPhotoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBulsaPhotoRemove = () => {
+    setBulsaPhotoFile(null);
+    setBulsaPhotoPreview(null);
+  };
+
+  const handleEditBulsaPhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('파일 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+      }
+      setEditBulsaPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setEditBulsaPhotoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditBulsaPhotoRemove = () => {
+    setEditBulsaPhotoFile(null);
+    setEditBulsaPhotoPreview(null);
+    setEditBulsaForm({...editBulsaForm, photoURL: ''});
+  };
+
   const uploadPhoto = async (file, believerId) => {
     try {
-      // 파일명: believers/{believerId}/{timestamp}.jpg
       const timestamp = Date.now();
       const fileName = `${timestamp}.jpg`;
       const photoRef = storageRef(storage, `believers/${believerId}/${fileName}`);
-      
-      // 업로드
       await uploadBytes(photoRef, file);
-      
-      // 다운로드 URL 가져오기
       const downloadURL = await getDownloadURL(photoRef);
       return downloadURL;
     } catch (error) {
       console.error('사진 업로드 실패:', error);
+      throw error;
+    }
+  };
+
+  const uploadBulsaPhoto = async (file, believerId, bulsaId) => {
+    try {
+      const timestamp = Date.now();
+      const fileName = `bulsa_${bulsaId}_${timestamp}.jpg`;
+      const photoRef = storageRef(storage, `believers/${believerId}/bulsa/${fileName}`);
+      await uploadBytes(photoRef, file);
+      const downloadURL = await getDownloadURL(photoRef);
+      return downloadURL;
+    } catch (error) {
+      console.error('불사 사진 업로드 실패:', error);
       throw error;
     }
   };
@@ -217,37 +253,32 @@ export default function TempleManagementSystem() {
       alert('이름과 전화번호는 필수입니다.');
       return;
     }
-    
     setIsUploading(true);
-    
     try {
-      const bulsaArray = newBulsaData.content && newBulsaData.amount && newBulsaData.person 
-        ? [{ ...newBulsaData }] : [];
-      
-      const { unpaid } = calcTotals(bulsaArray, []);
+      let bulsaArray = [];
       const believerId = Date.now().toString();
       
-      // 사진이 있으면 업로드
-      let photoURL = null;
-      if (photoFile) {
-        photoURL = await uploadPhoto(photoFile, believerId);
+      if (newBulsaData.content && newBulsaData.amount && newBulsaData.person) {
+        let bulsaPhotoURL = '';
+        if (photoFile) {
+          bulsaPhotoURL = await uploadPhoto(photoFile, believerId);
+        }
+        bulsaArray = [{ ...newBulsaData, photoURL: bulsaPhotoURL }];
       }
       
+      const { unpaid } = calcTotals(bulsaArray, []);
       const newBeliever = { 
         id: believerId, 
         ...formData, 
         bulsa: bulsaArray, 
         deposits: [], 
-        unpaid,
-        photoURL: photoURL || ''
+        unpaid
       };
       
       const updatedBelievers = [...believers, newBeliever];
       setBelievers(updatedBelievers);
       await saveBelievers(updatedBelievers);
-      
       alert('새 신도가 추가되었습니다.');
-      
       setFormData(emptyForm);
       setNewBulsaData(emptyBulsa);
       setPhotoFile(null);
@@ -271,7 +302,6 @@ export default function TempleManagementSystem() {
       alert('이름과 전화번호는 필수입니다.');
       return;
     }
-    
     const updatedBelievers = believers.map(b => 
       b.id === selectedBeliever.id ? { ...b, name: formData.name, phone: formData.phone, address: formData.address } : b
     );
@@ -300,29 +330,40 @@ export default function TempleManagementSystem() {
   const openBulsaPopup = (believer) => {
     setSelectedBeliever(believer);
     setBulsaForm(emptyBulsa);
+    setBulsaPhotoFile(null);
+    setBulsaPhotoPreview(null);
     setShowBulsaPopup(true);
   };
 
-  const addBulsa = () => {
+  const addBulsa = async () => {
     if (!bulsaForm.content || !bulsaForm.amount || !bulsaForm.person) {
       alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
       return;
     }
-    
-    const updatedBelievers = believers.map(b => {
-      if (b.id === selectedBeliever.id) {
-        const newBulsa = [...(b.bulsa || []), { ...bulsaForm }];
-        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
-        return { ...b, bulsa: newBulsa, unpaid };
+    try {
+      let bulsaPhotoURL = '';
+      if (bulsaPhotoFile) {
+        const bulsaId = Date.now().toString();
+        bulsaPhotoURL = await uploadBulsaPhoto(bulsaPhotoFile, selectedBeliever.id, bulsaId);
       }
-      return b;
-    });
-    
-    setBelievers(updatedBelievers);
-    saveBelievers(updatedBelievers);
-    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
-    alert('불사내용이 추가되었습니다.');
-    setBulsaForm(emptyBulsa);
+      const updatedBelievers = believers.map(b => {
+        if (b.id === selectedBeliever.id) {
+          const newBulsa = [...(b.bulsa || []), { ...bulsaForm, photoURL: bulsaPhotoURL }];
+          const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+          return { ...b, bulsa: newBulsa, unpaid };
+        }
+        return b;
+      });
+      setBelievers(updatedBelievers);
+      await saveBelievers(updatedBelievers);
+      setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+      alert('불사내용이 추가되었습니다.');
+      setBulsaForm(emptyBulsa);
+      setBulsaPhotoFile(null);
+      setBulsaPhotoPreview(null);
+    } catch (error) {
+      alert('불사 추가 실패: ' + error.message);
+    }
   };
 
   const deleteBulsa = (believerId, index) => {
@@ -342,32 +383,43 @@ export default function TempleManagementSystem() {
   const openBulsaEditPopup = (index) => {
     setEditingBulsaIndex(index);
     setEditBulsaForm({ ...selectedBeliever.bulsa[index] });
+    setEditBulsaPhotoFile(null);
+    setEditBulsaPhotoPreview(null);
     setShowBulsaEditPopup(true);
   };
 
-  const confirmBulsaEdit = () => {
+  const confirmBulsaEdit = async () => {
     if (!editBulsaForm.content || !editBulsaForm.amount || !editBulsaForm.person) {
       alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
       return;
     }
-
-    const updatedBelievers = believers.map(b => {
-      if (b.id === selectedBeliever.id) {
-        const newBulsa = [...b.bulsa];
-        newBulsa[editingBulsaIndex] = { ...editBulsaForm };
-        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
-        return { ...b, bulsa: newBulsa, unpaid };
+    try {
+      let updatedPhotoURL = editBulsaForm.photoURL || '';
+      if (editBulsaPhotoFile) {
+        const bulsaId = Date.now().toString();
+        updatedPhotoURL = await uploadBulsaPhoto(editBulsaPhotoFile, selectedBeliever.id, bulsaId);
       }
-      return b;
-    });
-
-    setBelievers(updatedBelievers);
-    saveBelievers(updatedBelievers);
-    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
-    alert('불사내용이 수정되었습니다.');
-    setShowBulsaEditPopup(false);
-    setEditingBulsaIndex(null);
-    setEditBulsaForm(emptyBulsa);
+      const updatedBelievers = believers.map(b => {
+        if (b.id === selectedBeliever.id) {
+          const newBulsa = [...b.bulsa];
+          newBulsa[editingBulsaIndex] = { ...editBulsaForm, photoURL: updatedPhotoURL };
+          const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+          return { ...b, bulsa: newBulsa, unpaid };
+        }
+        return b;
+      });
+      setBelievers(updatedBelievers);
+      await saveBelievers(updatedBelievers);
+      setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+      alert('불사내용이 수정되었습니다.');
+      setShowBulsaEditPopup(false);
+      setEditingBulsaIndex(null);
+      setEditBulsaForm(emptyBulsa);
+      setEditBulsaPhotoFile(null);
+      setEditBulsaPhotoPreview(null);
+    } catch (error) {
+      alert('불사 수정 실패: ' + error.message);
+    }
   };
 
   const openDepositPopup = (believer) => {
@@ -381,7 +433,6 @@ export default function TempleManagementSystem() {
       alert('날짜와 금액을 입력해주세요.');
       return;
     }
-    
     const updatedBelievers = believers.map(b => {
       if (b.id === selectedBeliever.id) {
         const newDeposits = [...(b.deposits || []), { ...depositForm }];
@@ -390,7 +441,6 @@ export default function TempleManagementSystem() {
       }
       return b;
     });
-    
     setBelievers(updatedBelievers);
     saveBelievers(updatedBelievers);
     setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
@@ -417,14 +467,9 @@ export default function TempleManagementSystem() {
 
   const filteredBelievers = believers.filter(b => {
     if (!searchTerm) return true;
-    
-    // 검색어를 공백으로 분리
     const searchParts = searchTerm.trim().split(/\s+/);
-    
-    // 크기 키워드 추출 (공백으로 구분된 경우만)
     const sizeKeywords = [];
     let textSearchParts = [];
-    
     searchParts.forEach(part => {
       const lowerPart = part.toLowerCase();
       if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
@@ -433,45 +478,28 @@ export default function TempleManagementSystem() {
         textSearchParts.push(part);
       }
     });
-    
-    // 각 텍스트 검색어가 모두 매칭되는지 확인 (AND 조건)
     const allTextMatches = textSearchParts.every(searchWord => {
       const lowerSearchWord = searchWord.toLowerCase();
-      
-      // 이름 매칭
       const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
-      
-      // 전화번호 매칭
       const phoneMatch = (b.phone || '').includes(searchWord);
-      
-      // 불사내용 매칭
       const bulsaContentMatch = (b.bulsa || []).some(item => 
         (item.content || '').toLowerCase().includes(lowerSearchWord)
       );
-      
-      // 이름, 전화번호, 불사내용 중 하나라도 매칭되면 OK
       return nameMatch || phoneMatch || bulsaContentMatch;
     });
-    
-    // 크기 검색이 없으면 텍스트 매칭만으로 충분
     if (sizeKeywords.length === 0) {
       return allTextMatches;
     }
-    
-    // 크기 검색이 있으면: 텍스트도 매칭 AND 불사 크기도 매칭
     const hasBulsaWithSize = (b.bulsa || []).some(item => 
       sizeKeywords.includes(item.size)
     );
-    
     return allTextMatches && hasBulsaWithSize;
   });
 
-  // 검색된 신도들의 총합계 계산
   const searchTotals = filteredBelievers.reduce((totals, believer) => {
     const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
     const depositTotal = getTotalDepositAmount(believer.deposits || []);
     const unpaidTotal = parseInt(believer.unpaid || 0);
-    
     return {
       totalBulsa: totals.totalBulsa + bulsaTotal,
       totalDeposit: totals.totalDeposit + depositTotal,
@@ -482,7 +510,6 @@ export default function TempleManagementSystem() {
   if (!isLoggedIn) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
-        {/* 설치 버튼 - 우측 상단 */}
         {showInstallButton && (
           <button
             onClick={handleInstallClick}
@@ -500,20 +527,15 @@ export default function TempleManagementSystem() {
           <div className="absolute bottom-10 right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl"></div>
           <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-yellow-500/5 rounded-full blur-3xl"></div>
         </div>
-        
         <div className="relative bg-gradient-to-br from-amber-50/95 via-orange-50/95 to-yellow-50/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 sm:p-12 w-full max-w-md border border-amber-200/50">
           <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent rounded-3xl"></div>
-          
           <div className="relative text-center mb-10">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl border-4 border-white/50 relative">
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-full"></div>
               <span className="text-4xl sm:text-5xl relative z-10">🙏</span>
             </div>
-            
             <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-900 via-orange-800 to-amber-900 bg-clip-text text-transparent mb-2" style={{fontFamily: 'serif'}}>
-                海雲寺
-              </h1>
+              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-900 via-orange-800 to-amber-900 bg-clip-text text-transparent mb-2" style={{fontFamily: 'serif'}}>海雲寺</h1>
               <div className="flex items-center justify-center gap-2">
                 <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-amber-600 to-transparent"></div>
                 <span className="text-amber-800 text-sm font-semibold tracking-wider">해운사</span>
@@ -522,7 +544,6 @@ export default function TempleManagementSystem() {
               <p className="text-base sm:text-lg text-amber-700 font-medium mt-3">신도관리 시스템</p>
             </div>
           </div>
-
           <div className="relative space-y-6">
             <div>
               <div className="relative group">
@@ -538,7 +559,6 @@ export default function TempleManagementSystem() {
                 />
               </div>
             </div>
-
             <button
               onClick={handleLogin}
               className="relative w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white font-bold py-4 rounded-xl shadow-xl text-lg overflow-hidden group transition-all hover:shadow-2xl"
@@ -692,15 +712,12 @@ export default function TempleManagementSystem() {
             )}
           </div>
           
-          {/* 검색 결과 총합계 - 세로 배치 */}
           {filteredBelievers.length > 0 && (
             <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
               <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
                 📊 검색 결과 총합계 ({filteredBelievers.length}명)
               </h3>
-              
               <div className="space-y-3">
-                {/* 총 불사금액 */}
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -713,8 +730,6 @@ export default function TempleManagementSystem() {
                     </div>
                   </div>
                 </div>
-
-                {/* 총 입금액 */}
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-green-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -727,8 +742,6 @@ export default function TempleManagementSystem() {
                     </div>
                   </div>
                 </div>
-
-                {/* 총 미수금 */}
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-red-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -741,8 +754,6 @@ export default function TempleManagementSystem() {
                     </div>
                   </div>
                 </div>
-
-                {/* 입금률 */}
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-amber-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -777,7 +788,59 @@ export default function TempleManagementSystem() {
               <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
               
               <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
-                <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">기본 정보</h3>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
+                  
+                  {!photoPreview && (
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer" title="카메라로 촬영">
+                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
+                          <span className="text-xl">📷</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="cursor-pointer" title="갤러리에서 선택">
+                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
+                          <span className="text-xl">📁</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {photoPreview && (
+                  <div className="mb-3 sm:mb-4">
+                    <div className="relative">
+                      <img 
+                        src={photoPreview} 
+                        alt="미리보기" 
+                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={handlePhotoRemove}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-2">
+                      사진 선택됨 (×를 눌러 변경)
+                    </p>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <div>
@@ -844,12 +907,6 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.content}
                       onChange={(e) => setNewBulsaData({...newBulsaData, content: e.target.value})}
                       placeholder="예: 용두관음"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[type="number"][placeholder="0"]').focus();
-                        }
-                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -861,12 +918,6 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.amount}
                       onChange={(e) => setNewBulsaData({...newBulsaData, amount: e.target.value})}
                       placeholder="0"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[placeholder="OO생-홍길동"]').focus();
-                        }
-                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -878,12 +929,6 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.person}
                       onChange={(e) => setNewBulsaData({...newBulsaData, person: e.target.value})}
                       placeholder="OO생-홍길동"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[placeholder="예: 1층 동쪽"]').focus();
-                        }
-                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -894,6 +939,7 @@ export default function TempleManagementSystem() {
                       {['소', '중', '대'].map(size => (
                         <button
                           key={size}
+                          type="button"
                           onClick={() => setNewBulsaData({...newBulsaData, size})}
                           className={`flex-1 py-2.5 sm:py-3 text-base rounded-lg font-bold transition-all ${
                             newBulsaData.size === size 
@@ -914,12 +960,6 @@ export default function TempleManagementSystem() {
                       value={newBulsaData.location}
                       onChange={(e) => setNewBulsaData({...newBulsaData, location: e.target.value})}
                       placeholder="예: 1층 동쪽"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddBeliever();
-                        }
-                      }}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -963,13 +1003,30 @@ export default function TempleManagementSystem() {
                 <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
                   <h3 className="font-bold text-amber-900 mb-3 text-sm sm:text-base">등록된 불사내용</h3>
                   {selectedBeliever.bulsa.map((b, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-2 border-b border-amber-200 last:border-0">
-                      <div className="flex-1">
-                        {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-                        <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
-                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
-                        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
-                        {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
+                      <div className="flex items-center gap-2 flex-1">
+                        {b.photoURL ? (
+                          <img 
+                            src={b.photoURL}
+                            alt="불사 사진"
+                            onClick={() => {
+                              setViewPhotoUrl(b.photoURL);
+                              setViewPhotoModal(true);
+                            }}
+                            className="w-8 h-8 rounded object-cover border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
+                            <span className="text-lg text-gray-400">📷</span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
+                          <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+                          {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+                        </div>
                       </div>
                       {userRole === 'admin' && (
                         <div className="flex gap-2">
@@ -1000,7 +1057,60 @@ export default function TempleManagementSystem() {
 
               {userRole === 'admin' && (
                 <>
-                  <h3 className="font-bold text-amber-900 mb-3 sm:mb-4 text-sm sm:text-base">새 불사내용 추가</h3>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
+                    
+                    {!bulsaPhotoPreview && (
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer" title="카메라로 촬영">
+                          <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
+                            <span className="text-xl">📷</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleBulsaPhotoChange}
+                            className="hidden"
+                          />
+                        </label>
+                        <label className="cursor-pointer" title="갤러리에서 선택">
+                          <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
+                            <span className="text-xl">📁</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleBulsaPhotoChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {bulsaPhotoPreview && (
+                    <div className="mb-4 bg-amber-50 p-4 rounded-lg border-2 border-amber-200">
+                      <div className="relative">
+                        <img 
+                          src={bulsaPhotoPreview} 
+                          alt="미리보기" 
+                          className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleBulsaPhotoRemove}
+                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-center text-xs text-gray-500 mt-2">
+                        사진 선택됨 (×를 눌러 변경)
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
                     <div>
                       <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사내용</label>
@@ -1038,6 +1148,7 @@ export default function TempleManagementSystem() {
                         {['소', '중', '대'].map(size => (
                           <button
                             key={size}
+                            type="button"
                             onClick={() => setBulsaForm({...bulsaForm, size})}
                             className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
                               bulsaForm.size === size 
@@ -1101,11 +1212,57 @@ export default function TempleManagementSystem() {
                     setShowBulsaEditPopup(false);
                     setEditingBulsaIndex(null);
                     setEditBulsaForm(emptyBulsa);
+                    setEditBulsaPhotoFile(null);
+                    setEditBulsaPhotoPreview(null);
                   }} 
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-amber-900 text-sm">사진</h3>
+                  {!editBulsaPhotoPreview && !editBulsaForm.photoURL && (
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer" title="카메라로 촬영">
+                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center shadow-md border-2 border-blue-300">
+                          <span className="text-xl">📷</span>
+                        </div>
+                        <input type="file" accept="image/*" capture="environment" onChange={handleEditBulsaPhotoChange} className="hidden" />
+                      </label>
+                      <label className="cursor-pointer" title="갤러리에서 선택">
+                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center shadow-md border-2 border-amber-300">
+                          <span className="text-xl">📁</span>
+                        </div>
+                        <input type="file" accept="image/*" onChange={handleEditBulsaPhotoChange} className="hidden" />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {(editBulsaPhotoPreview || editBulsaForm.photoURL) && (
+                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <div className="relative">
+                      <img 
+                        src={editBulsaPhotoPreview || editBulsaForm.photoURL} 
+                        alt="불사 사진" 
+                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-blue-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleEditBulsaPhotoRemove}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-2">
+                      {editBulsaPhotoPreview ? '새 사진 선택됨' : '기존 사진'} (×를 눌러 {editBulsaPhotoPreview ? '변경' : '삭제'})
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
@@ -1148,6 +1305,7 @@ export default function TempleManagementSystem() {
                     {['소', '중', '대'].map(size => (
                       <button
                         key={size}
+                        type="button"
                         onClick={() => setEditBulsaForm({...editBulsaForm, size})}
                         className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
                           editBulsaForm.size === size 
@@ -1185,6 +1343,8 @@ export default function TempleManagementSystem() {
                     setShowBulsaEditPopup(false);
                     setEditingBulsaIndex(null);
                     setEditBulsaForm(emptyBulsa);
+                    setEditBulsaPhotoFile(null);
+                    setEditBulsaPhotoPreview(null);
                   }}
                   className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
                 >
@@ -1382,6 +1542,27 @@ export default function TempleManagementSystem() {
                   취소
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {viewPhotoModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" 
+            onClick={() => setViewPhotoModal(false)}
+          >
+            <div className="relative max-w-4xl w-full">
+              <img 
+                src={viewPhotoUrl} 
+                alt="불사 사진 확대" 
+                className="w-full rounded-lg shadow-2xl"
+              />
+              <button 
+                onClick={() => setViewPhotoModal(false)} 
+                className="absolute top-4 right-4 bg-white text-black rounded-full p-2 shadow-lg hover:bg-gray-100 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
           </div>
         )}
