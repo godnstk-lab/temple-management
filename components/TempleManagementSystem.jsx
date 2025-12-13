@@ -15,10 +15,89 @@ const firebaseConfig = {
   appId: "1:753617201876:web:6ebd3c15c76dd3db536941"
 };
 
-// Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const storage = getStorage(app);
+
+// 재사용 가능한 컴포넌트들
+const PhotoUploadButtons = ({ onPhotoChange, show }) => {
+  if (!show) return null;
+  return (
+    <div className="flex gap-2">
+      <label className="cursor-pointer" title="카메라로 촬영">
+        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
+          <span className="text-xl">📷</span>
+        </div>
+        <input type="file" accept="image/*" capture="environment" onChange={onPhotoChange} className="hidden" />
+      </label>
+      <label className="cursor-pointer" title="갤러리에서 선택">
+        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
+          <span className="text-xl">📁</span>
+        </div>
+        <input type="file" accept="image/*" onChange={onPhotoChange} className="hidden" />
+      </label>
+    </div>
+  );
+};
+
+const PhotoPreview = ({ src, onRemove }) => {
+  if (!src) return null;
+  return (
+    <div className="mb-3 sm:mb-4 bg-amber-50 p-4 rounded-lg border-2 border-amber-200">
+      <div className="relative">
+        <img src={src} alt="미리보기" className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300" />
+        <button type="button" onClick={onRemove} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <p className="text-center text-xs text-gray-500 mt-2">사진 선택됨 (×를 눌러 변경)</p>
+    </div>
+  );
+};
+
+const SizeSelector = ({ value, onChange }) => (
+  <div>
+    <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
+    <div className="flex gap-2">
+      {['소', '중', '대'].map(size => (
+        <button
+          key={size}
+          type="button"
+          onClick={() => onChange(size)}
+          className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
+            value === size ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          {size}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const FormInput = ({ label, required, className = '', ...props }) => (
+  <div className={className}>
+    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">
+      {label} {required && '*'}
+    </label>
+    <input
+      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+      {...props}
+    />
+  </div>
+);
+
+const BulsaFormFields = ({ form, setForm }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
+    <FormInput label="불사내용" type="text" value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="예: 용두관음" />
+    <FormInput label="불사금액 (만원)" type="number" value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} placeholder="0" />
+    <FormInput label="봉안자/복위자" type="text" value={form.person} onChange={(e) => setForm({...form, person: e.target.value})} placeholder="OO생-홍길동" />
+    <SizeSelector value={form.size} onChange={(size) => setForm({...form, size})} />
+    <div className="md:col-span-2">
+      <FormInput label="봉안위치" type="text" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} placeholder="예: 1층 동쪽" />
+    </div>
+  </div>
+);
 
 export default function TempleManagementSystem() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,8 +118,6 @@ export default function TempleManagementSystem() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  
-  // 불사 사진 관련 state
   const [bulsaPhotoFile, setBulsaPhotoFile] = useState(null);
   const [bulsaPhotoPreview, setBulsaPhotoPreview] = useState(null);
   const [editBulsaPhotoFile, setEditBulsaPhotoFile] = useState(null);
@@ -63,10 +140,7 @@ export default function TempleManagementSystem() {
     const unsubscribe = onValue(believersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const believersArray = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        }));
+        const believersArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         setBelievers(believersArray);
       } else {
         setBelievers([]);
@@ -85,9 +159,7 @@ export default function TempleManagementSystem() {
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setShowInstallButton(false);
     }
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   const handleInstallClick = async () => {
@@ -97,9 +169,7 @@ export default function TempleManagementSystem() {
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowInstallButton(false);
-    }
+    if (outcome === 'accepted') setShowInstallButton(false);
     setDeferredPrompt(null);
   };
 
@@ -107,9 +177,7 @@ export default function TempleManagementSystem() {
     try {
       const believersRef = ref(database, 'believers');
       const believersObj = {};
-      newBelievers.forEach(believer => {
-        believersObj[believer.id] = believer;
-      });
+      newBelievers.forEach(believer => { believersObj[believer.id] = believer; });
       await set(believersRef, believersObj);
     } catch (error) {
       console.error('저장 실패:', error);
@@ -138,7 +206,7 @@ export default function TempleManagementSystem() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = (e, setter, previewSetter) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
@@ -149,92 +217,23 @@ export default function TempleManagementSystem() {
         alert('이미지 파일만 업로드 가능합니다.');
         return;
       }
-      setPhotoFile(file);
+      setter(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
+      reader.onloadend = () => previewSetter(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
-  const handlePhotoRemove = () => {
-    setPhotoFile(null);
-    setPhotoPreview(null);
-  };
-
-  // 불사 사진 핸들러들
-  const handleBulsaPhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('파일 크기는 10MB 이하여야 합니다.');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert('이미지 파일만 업로드 가능합니다.');
-        return;
-      }
-      setBulsaPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setBulsaPhotoPreview(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleBulsaPhotoRemove = () => {
-    setBulsaPhotoFile(null);
-    setBulsaPhotoPreview(null);
-  };
-
-  const handleEditBulsaPhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('파일 크기는 10MB 이하여야 합니다.');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert('이미지 파일만 업로드 가능합니다.');
-        return;
-      }
-      setEditBulsaPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setEditBulsaPhotoPreview(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleEditBulsaPhotoRemove = () => {
-    setEditBulsaPhotoFile(null);
-    setEditBulsaPhotoPreview(null);
-    setEditBulsaForm({...editBulsaForm, photoURL: ''});
-  };
-
-  const uploadPhoto = async (file, believerId) => {
+  const uploadPhoto = async (file, believerId, isBulsa = false, bulsaId = null) => {
     try {
       const timestamp = Date.now();
-      const fileName = `${timestamp}.jpg`;
-      const photoRef = storageRef(storage, `believers/${believerId}/${fileName}`);
+      const fileName = isBulsa ? `bulsa_${bulsaId}_${timestamp}.jpg` : `${timestamp}.jpg`;
+      const path = isBulsa ? `believers/${believerId}/bulsa/${fileName}` : `believers/${believerId}/${fileName}`;
+      const photoRef = storageRef(storage, path);
       await uploadBytes(photoRef, file);
-      const downloadURL = await getDownloadURL(photoRef);
-      return downloadURL;
+      return await getDownloadURL(photoRef);
     } catch (error) {
       console.error('사진 업로드 실패:', error);
-      throw error;
-    }
-  };
-
-  const uploadBulsaPhoto = async (file, believerId, bulsaId) => {
-    try {
-      const timestamp = Date.now();
-      const fileName = `bulsa_${bulsaId}_${timestamp}.jpg`;
-      const photoRef = storageRef(storage, `believers/${believerId}/bulsa/${fileName}`);
-      await uploadBytes(photoRef, file);
-      const downloadURL = await getDownloadURL(photoRef);
-      return downloadURL;
-    } catch (error) {
-      console.error('불사 사진 업로드 실패:', error);
       throw error;
     }
   };
@@ -246,7 +245,8 @@ export default function TempleManagementSystem() {
   };
   
   const formatNumber = (num) => num ? parseInt(num).toLocaleString() : '0';
-  const truncateAddress = (addr) => !addr ? '' : addr.length > 10 ? addr.substring(0, 10) + '...' : addr;
+  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+  const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
   const handleAddBeliever = async () => {
     if (!formData.name || !formData.phone) {
@@ -267,13 +267,7 @@ export default function TempleManagementSystem() {
       }
       
       const { unpaid } = calcTotals(bulsaArray, []);
-      const newBeliever = { 
-        id: believerId, 
-        ...formData, 
-        bulsa: bulsaArray, 
-        deposits: [], 
-        unpaid
-      };
+      const newBeliever = { id: believerId, ...formData, bulsa: bulsaArray, deposits: [], unpaid };
       
       const updatedBelievers = [...believers, newBeliever];
       setBelievers(updatedBelievers);
@@ -344,7 +338,7 @@ export default function TempleManagementSystem() {
       let bulsaPhotoURL = '';
       if (bulsaPhotoFile) {
         const bulsaId = Date.now().toString();
-        bulsaPhotoURL = await uploadBulsaPhoto(bulsaPhotoFile, selectedBeliever.id, bulsaId);
+        bulsaPhotoURL = await uploadPhoto(bulsaPhotoFile, selectedBeliever.id, true, bulsaId);
       }
       const updatedBelievers = believers.map(b => {
         if (b.id === selectedBeliever.id) {
@@ -397,7 +391,7 @@ export default function TempleManagementSystem() {
       let updatedPhotoURL = editBulsaForm.photoURL || '';
       if (editBulsaPhotoFile) {
         const bulsaId = Date.now().toString();
-        updatedPhotoURL = await uploadBulsaPhoto(editBulsaPhotoFile, selectedBeliever.id, bulsaId);
+        updatedPhotoURL = await uploadPhoto(editBulsaPhotoFile, selectedBeliever.id, true, bulsaId);
       }
       const updatedBelievers = believers.map(b => {
         if (b.id === selectedBeliever.id) {
@@ -462,9 +456,6 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
-  const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
-
   const filteredBelievers = believers.filter(b => {
     if (!searchTerm) return true;
     const searchParts = searchTerm.trim().split(/\s+/);
@@ -490,9 +481,7 @@ export default function TempleManagementSystem() {
     if (sizeKeywords.length === 0) {
       return allTextMatches;
     }
-    const hasBulsaWithSize = (b.bulsa || []).some(item => 
-      sizeKeywords.includes(item.size)
-    );
+    const hasBulsaWithSize = (b.bulsa || []).some(item => sizeKeywords.includes(item.size));
     return allTextMatches && hasBulsaWithSize;
   });
 
@@ -511,11 +500,7 @@ export default function TempleManagementSystem() {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
         {showInstallButton && (
-          <button
-            onClick={handleInstallClick}
-            className="fixed top-4 right-4 z-50 bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 font-bold text-sm transition-all animate-pulse"
-            style={{top: 'max(1rem, env(safe-area-inset-top))', right: 'max(1rem, env(safe-area-inset-right))'}}
-          >
+          <button onClick={handleInstallClick} className="fixed top-4 right-4 z-50 bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white px-4 py-2 rounded-lg shadow-xl flex items-center gap-2 font-bold text-sm transition-all animate-pulse" style={{top: 'max(1rem, env(safe-area-inset-top))', right: 'max(1rem, env(safe-area-inset-right))'}}>
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">앱 설치</span>
             <span className="sm:hidden">설치</span>
@@ -549,20 +534,10 @@ export default function TempleManagementSystem() {
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-400 rounded-xl blur opacity-25 group-hover:opacity-40 transition"></div>
                 <Lock className="absolute left-4 top-4 w-5 h-5 text-amber-700 z-10" />
-                <input
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                  className="relative w-full pl-12 pr-4 py-4 border-2 border-amber-300/50 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm text-center text-lg shadow-lg transition-all"
-                  placeholder="••••"
-                />
+                <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} className="relative w-full pl-12 pr-4 py-4 border-2 border-amber-300/50 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/80 backdrop-blur-sm text-center text-lg shadow-lg transition-all" placeholder="••••" />
               </div>
             </div>
-            <button
-              onClick={handleLogin}
-              className="relative w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white font-bold py-4 rounded-xl shadow-xl text-lg overflow-hidden group transition-all hover:shadow-2xl"
-            >
+            <button onClick={handleLogin} className="relative w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 text-white font-bold py-4 rounded-xl shadow-xl text-lg overflow-hidden group transition-all hover:shadow-2xl">
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
               <span className="relative">입장하기</span>
             </button>
@@ -584,15 +559,10 @@ export default function TempleManagementSystem() {
                 </div>
                 <div>
                   <h1 className="text-xl sm:text-4xl font-bold text-white" style={{fontFamily: 'serif'}}>해운사 신도관리</h1>
-                  <p className="text-amber-100 text-xs sm:text-sm mt-1">
-                    {userRole === 'admin' ? '관리자' : '일반 사용자'} 모드
-                  </p>
+                  <p className="text-amber-100 text-xs sm:text-sm mt-1">{userRole === 'admin' ? '관리자' : '일반 사용자'} 모드</p>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base"
-              >
+              <button onClick={handleLogout} className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base">
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">로그아웃</span>
               </button>
@@ -605,23 +575,10 @@ export default function TempleManagementSystem() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 sm:left-4 top-3 sm:top-4 w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-                <input
-                  type="text"
-                  placeholder="이름, 전화번호, 불사내용으로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
+                <input type="text" placeholder="이름, 전화번호, 불사내용으로 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
               </div>
               {userRole === 'admin' && (
-                <button
-                  onClick={() => {
-                    setShowAddForm(true);
-                    setFormData(emptyForm);
-                    setNewBulsaData(emptyBulsa);
-                  }}
-                  className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all shadow-md whitespace-nowrap text-sm sm:text-base"
-                >
+                <button onClick={() => { setShowAddForm(true); setFormData(emptyForm); setNewBulsaData(emptyBulsa); }} className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all shadow-md whitespace-nowrap text-sm sm:text-base">
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   신도 추가
                 </button>
@@ -630,9 +587,7 @@ export default function TempleManagementSystem() {
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-amber-200">
-            <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">
-              신도 목록 ({filteredBelievers.length}명)
-            </h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 목록 ({filteredBelievers.length}명)</h2>
 
             {filteredBelievers.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-amber-700">
@@ -658,21 +613,13 @@ export default function TempleManagementSystem() {
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
                             {userRole === 'admin' ? (
-                              <button
-                                onClick={() => handleEdit(believer)}
-                                className="text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
-                              >
-                                {believer.name}
-                              </button>
+                              <button onClick={() => handleEdit(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer">{believer.name}</button>
                             ) : (
                               <span>{believer.name}</span>
                             )}
                           </td>
                           <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
-                            <button
-                              onClick={() => openBulsaPopup(believer)}
-                              className="text-blue-600 hover:text-blue-800 font-semibold underline"
-                            >
+                            <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
                               {believer.bulsa && believer.bulsa.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
                                   <span className="text-sm font-bold">{formatNumber(getTotalBulsaAmount(believer.bulsa))}만</span>
@@ -682,10 +629,7 @@ export default function TempleManagementSystem() {
                             </button>
                           </td>
                           <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
-                            <button
-                              onClick={() => openDepositPopup(believer)}
-                              className="text-green-600 hover:text-green-800 font-semibold underline"
-                            >
+                            <button onClick={() => openDepositPopup(believer)} className="text-green-600 hover:text-green-800 font-semibold underline">
                               {believer.deposits && believer.deposits.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
                                   <span className="text-sm font-bold">{formatNumber(getTotalDepositAmount(believer.deposits))}만</span>
@@ -700,10 +644,7 @@ export default function TempleManagementSystem() {
                           {userRole === 'admin' && (
                             <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1 sm:gap-2">
-                                <button
-                                  onClick={() => handleDelete(believer)}
-                                  className="px-2 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-xs sm:text-sm"
-                                >
+                                <button onClick={() => handleDelete(believer)} className="px-2 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-xs sm:text-sm">
                                   삭제
                                 </button>
                               </div>
@@ -720,9 +661,7 @@ export default function TempleManagementSystem() {
           
           {filteredBelievers.length > 0 && (
             <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
-              <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">
-                📊 검색 결과 총합계 ({filteredBelievers.length}명)
-              </h3>
+              <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
               <div className="space-y-3">
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
                   <div className="flex items-center justify-between">
@@ -767,20 +706,13 @@ export default function TempleManagementSystem() {
                       <span className="text-sm sm:text-base font-bold text-gray-700">입금률</span>
                     </div>
                     <span className="text-xl sm:text-3xl font-bold text-amber-700">
-                      {searchTotals.totalBulsa > 0 
-                        ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1)
-                        : 0}%
+                      {searchTotals.totalBulsa > 0 ? ((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100).toFixed(1) : 0}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${searchTotals.totalBulsa > 0 
-                          ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100)
-                          : 0}%`
-                      }}
-                    ></div>
+                    <div className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${searchTotals.totalBulsa > 0 ? Math.min((searchTotals.totalDeposit / searchTotals.totalBulsa) * 100, 100) : 0}%` }}>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -788,6 +720,7 @@ export default function TempleManagementSystem() {
           )}
         </div>
 
+        {/* 신도 추가 폼 */}
         {showAddForm && userRole === 'admin' && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-16 sm:pt-8">
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl mb-8 overflow-y-auto max-h-[85vh] sm:max-h-[90vh]">
@@ -796,198 +729,28 @@ export default function TempleManagementSystem() {
               <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
-                  
-                  {!photoPreview && (
-                    <div className="flex gap-2">
-                      <label className="cursor-pointer" title="카메라로 촬영">
-                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
-                          <span className="text-xl">📷</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handlePhotoChange}
-                          className="hidden"
-                        />
-                      </label>
-                      <label className="cursor-pointer" title="갤러리에서 선택">
-                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
-                          <span className="text-xl">📁</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoChange}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  )}
+                  <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setPhotoFile, setPhotoPreview)} show={!photoPreview} />
                 </div>
 
-                {photoPreview && (
-                  <div className="mb-3 sm:mb-4">
-                    <div className="relative">
-                      <img 
-                        src={photoPreview} 
-                        alt="미리보기" 
-                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={handlePhotoRemove}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-2">
-                      사진 선택됨 (×를 눌러 변경)
-                    </p>
-                  </div>
-                )}
+                <PhotoPreview src={photoPreview} onRemove={() => { setPhotoFile(null); setPhotoPreview(null); }} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">이름 *</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[name="phone"]').focus();
-                        }
-                      }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">전화번호 *</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="010-0000-0000"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[name="address"]').focus();
-                        }
-                      }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">주소</label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.querySelector('input[placeholder="예: 용두관음"]').focus();
-                        }
-                      }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    />
-                  </div>
+                  <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
+                  <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="address"]').focus(); }}} />
+                  <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[placeholder="예: 용두관음"]').focus(); }}} />
                 </div>
               </div>
 
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">불사 정보 (선택사항)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">불사내용</label>
-                    <input
-                      type="text"
-                      value={newBulsaData.content}
-                      onChange={(e) => setNewBulsaData({...newBulsaData, content: e.target.value})}
-                      placeholder="예: 용두관음"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">불사금액 (만원)</label>
-                    <input
-                      type="number"
-                      value={newBulsaData.amount}
-                      onChange={(e) => setNewBulsaData({...newBulsaData, amount: e.target.value})}
-                      placeholder="0"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">봉안자/복위자</label>
-                    <input
-                      type="text"
-                      value={newBulsaData.person}
-                      onChange={(e) => setNewBulsaData({...newBulsaData, person: e.target.value})}
-                      placeholder="OO생-홍길동"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">크기</label>
-                    <div className="flex gap-2">
-                      {['소', '중', '대'].map(size => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => setNewBulsaData({...newBulsaData, size})}
-                          className={`flex-1 py-2.5 sm:py-3 text-base rounded-lg font-bold transition-all ${
-                            newBulsaData.size === size 
-                              ? 'bg-amber-600 text-white' 
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">봉안위치</label>
-                    <input
-                      type="text"
-                      value={newBulsaData.location}
-                      onChange={(e) => setNewBulsaData({...newBulsaData, location: e.target.value})}
-                      placeholder="예: 1층 동쪽"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-                </div>
+                <BulsaFormFields form={newBulsaData} setForm={setNewBulsaData} />
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
-                <button
-                  onClick={handleAddBeliever}
-                  disabled={isUploading}
-                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={handleAddBeliever} disabled={isUploading} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   {isUploading ? '업로드 중...' : '추가하기'}
                 </button>
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setPhotoFile(null);
-                    setPhotoPreview(null);
-                  }}
-                  className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold"
-                >
+                <button onClick={() => { setShowAddForm(false); setPhotoFile(null); setPhotoPreview(null); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
                   취소
                 </button>
               </div>
@@ -995,6 +758,7 @@ export default function TempleManagementSystem() {
           </div>
         )}
 
+        {/* 불사내용 팝업 */}
         {showBulsaPopup && selectedBeliever && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
@@ -1012,15 +776,7 @@ export default function TempleManagementSystem() {
                     <div key={idx} className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
                       <div className="flex items-center gap-2 flex-1">
                         {b.photoURL ? (
-                          <img 
-                            src={b.photoURL}
-                            alt="불사 사진"
-                            onClick={() => {
-                              setViewPhotoUrl(b.photoURL);
-                              setViewPhotoModal(true);
-                            }}
-                            className="w-8 h-8 rounded object-cover border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-                          />
+                          <img src={b.photoURL} alt="불사 사진" onClick={() => { setViewPhotoUrl(b.photoURL); setViewPhotoModal(true); }} className="w-8 h-8 rounded object-cover border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-110 transition-transform flex-shrink-0" />
                         ) : (
                           <div className="w-8 h-8 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
                             <span className="text-lg text-gray-400">📷</span>
@@ -1036,27 +792,15 @@ export default function TempleManagementSystem() {
                       </div>
                       {userRole === 'admin' && (
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => openBulsaEditPopup(idx)}
-                            className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => deleteBulsa(selectedBeliever.id, idx)}
-                            className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors"
-                          >
-                            삭제
-                          </button>
+                          <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
+                          <button onClick={() => deleteBulsa(selectedBeliever.id, idx)} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
                         </div>
                       )}
                     </div>
                   ))}
                   <div className="mt-3 pt-3 border-t-2 border-amber-300">
                     <span className="font-bold text-amber-900 text-sm sm:text-base">총 불사금액: </span>
-                    <span className="font-bold text-blue-600 text-base sm:text-lg">
-                      {formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원
-                    </span>
+                    <span className="font-bold text-blue-600 text-base sm:text-lg">{formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원</span>
                   </div>
                 </div>
               )}
@@ -1065,164 +809,33 @@ export default function TempleManagementSystem() {
                 <>
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
-                    
-                    {!bulsaPhotoPreview && (
-                      <div className="flex gap-2">
-                        <label className="cursor-pointer" title="카메라로 촬영">
-                          <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-blue-300">
-                            <span className="text-xl">📷</span>
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleBulsaPhotoChange}
-                            className="hidden"
-                          />
-                        </label>
-                        <label className="cursor-pointer" title="갤러리에서 선택">
-                          <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center transition-all shadow-md border-2 border-amber-300">
-                            <span className="text-xl">📁</span>
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleBulsaPhotoChange}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    )}
+                    <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setBulsaPhotoFile, setBulsaPhotoPreview)} show={!bulsaPhotoPreview} />
                   </div>
 
-                  {bulsaPhotoPreview && (
-                    <div className="mb-4 bg-amber-50 p-4 rounded-lg border-2 border-amber-200">
-                      <div className="relative">
-                        <img 
-                          src={bulsaPhotoPreview} 
-                          alt="미리보기" 
-                          className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleBulsaPhotoRemove}
-                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-center text-xs text-gray-500 mt-2">
-                        사진 선택됨 (×를 눌러 변경)
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사내용</label>
-                      <input
-                        type="text"
-                        value={bulsaForm.content}
-                        onChange={(e) => setBulsaForm({...bulsaForm, content: e.target.value})}
-                        placeholder="예: 용두관음"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사금액 (만원)</label>
-                      <input
-                        type="number"
-                        value={bulsaForm.amount}
-                        onChange={(e) => setBulsaForm({...bulsaForm, amount: e.target.value})}
-                        placeholder="0"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안자/복위자</label>
-                      <input
-                        type="text"
-                        value={bulsaForm.person}
-                        onChange={(e) => setBulsaForm({...bulsaForm, person: e.target.value})}
-                        placeholder="OO생-홍길동"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
-                      <div className="flex gap-2">
-                        {['소', '중', '대'].map(size => (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => setBulsaForm({...bulsaForm, size})}
-                            className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
-                              bulsaForm.size === size 
-                                ? 'bg-amber-600 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안위치</label>
-                      <input
-                        type="text"
-                        value={bulsaForm.location}
-                        onChange={(e) => setBulsaForm({...bulsaForm, location: e.target.value})}
-                        placeholder="예: 1층 동쪽"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                  </div>
+                  <PhotoPreview src={bulsaPhotoPreview} onRemove={() => { setBulsaPhotoFile(null); setBulsaPhotoPreview(null); }} />
+                  <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
 
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <button
-                      onClick={addBulsa}
-                      className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all"
-                    >
-                      추가하기
-                    </button>
-                    <button
-                      onClick={() => setShowBulsaPopup(false)}
-                      className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                    >
-                      닫기
-                    </button>
+                    <button onClick={addBulsa} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all">추가하기</button>
+                    <button onClick={() => setShowBulsaPopup(false)} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
                   </div>
                 </>
               )}
 
               {userRole !== 'admin' && (
-                <button
-                  onClick={() => setShowBulsaPopup(false)}
-                  className="w-full px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                >
-                  닫기
-                </button>
+                <button onClick={() => setShowBulsaPopup(false)} className="w-full px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
               )}
             </div>
           </div>
         )}
 
+        {/* 불사내용 수정 팝업 */}
         {showBulsaEditPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
-                <button 
-                  onClick={() => {
-                    setShowBulsaEditPopup(false);
-                    setEditingBulsaIndex(null);
-                    setEditBulsaForm(emptyBulsa);
-                    setEditBulsaPhotoFile(null);
-                    setEditBulsaPhotoPreview(null);
-                  }} 
-                  className="text-gray-500 hover:text-gray-700"
-                >
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFile(null); setEditBulsaPhotoPreview(null); }} className="text-gray-500 hover:text-gray-700">
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
@@ -1230,37 +843,14 @@ export default function TempleManagementSystem() {
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-amber-900 text-sm">사진</h3>
-                  {!editBulsaPhotoPreview && !editBulsaForm.photoURL && (
-                    <div className="flex gap-2">
-                      <label className="cursor-pointer" title="카메라로 촬영">
-                        <div className="w-10 h-10 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center shadow-md border-2 border-blue-300">
-                          <span className="text-xl">📷</span>
-                        </div>
-                        <input type="file" accept="image/*" capture="environment" onChange={handleEditBulsaPhotoChange} className="hidden" />
-                      </label>
-                      <label className="cursor-pointer" title="갤러리에서 선택">
-                        <div className="w-10 h-10 bg-amber-100 hover:bg-amber-200 rounded-full flex items-center justify-center shadow-md border-2 border-amber-300">
-                          <span className="text-xl">📁</span>
-                        </div>
-                        <input type="file" accept="image/*" onChange={handleEditBulsaPhotoChange} className="hidden" />
-                      </label>
-                    </div>
-                  )}
+                  <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setEditBulsaPhotoFile, setEditBulsaPhotoPreview)} show={!editBulsaPhotoPreview && !editBulsaForm.photoURL} />
                 </div>
 
                 {(editBulsaPhotoPreview || editBulsaForm.photoURL) && (
                   <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
                     <div className="relative">
-                      <img 
-                        src={editBulsaPhotoPreview || editBulsaForm.photoURL} 
-                        alt="불사 사진" 
-                        className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-blue-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleEditBulsaPhotoRemove}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg"
-                      >
+                      <img src={editBulsaPhotoPreview || editBulsaForm.photoURL} alt="불사 사진" className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-blue-300" />
+                      <button type="button" onClick={() => { setEditBulsaPhotoFile(null); setEditBulsaPhotoPreview(null); setEditBulsaForm({...editBulsaForm, photoURL: ''}); }} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -1271,96 +861,17 @@ export default function TempleManagementSystem() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사내용 *</label>
-                  <input
-                    type="text"
-                    value={editBulsaForm.content}
-                    onChange={(e) => setEditBulsaForm({...editBulsaForm, content: e.target.value})}
-                    placeholder="예: 용두관음"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">불사금액 (만원) *</label>
-                  <input
-                    type="number"
-                    value={editBulsaForm.amount}
-                    onChange={(e) => setEditBulsaForm({...editBulsaForm, amount: e.target.value})}
-                    placeholder="0"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안자/복위자 *</label>
-                  <input
-                    type="text"
-                    value={editBulsaForm.person}
-                    onChange={(e) => setEditBulsaForm({...editBulsaForm, person: e.target.value})}
-                    placeholder="OO생-홍길동"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
-                  <div className="flex gap-2">
-                    {['소', '중', '대'].map(size => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setEditBulsaForm({...editBulsaForm, size})}
-                        className={`flex-1 py-2 text-sm sm:text-base rounded-lg font-bold transition-all ${
-                          editBulsaForm.size === size 
-                            ? 'bg-amber-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">봉안위치</label>
-                  <input
-                    type="text"
-                    value={editBulsaForm.location}
-                    onChange={(e) => setEditBulsaForm({...editBulsaForm, location: e.target.value})}
-                    placeholder="예: 1층 동쪽"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
+              <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button
-                  onClick={confirmBulsaEdit}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
-                >
-                  수정 완료
-                </button>
-                <button
-                  onClick={() => {
-                    setShowBulsaEditPopup(false);
-                    setEditingBulsaIndex(null);
-                    setEditBulsaForm(emptyBulsa);
-                    setEditBulsaPhotoFile(null);
-                    setEditBulsaPhotoPreview(null);
-                  }}
-                  className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                >
-                  취소
-                </button>
+                <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFile(null); setEditBulsaPhotoPreview(null); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
               </div>
             </div>
           </div>
         )}
 
+        {/* 입금내역 팝업 */}
         {showDepositPopup && selectedBeliever && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1381,20 +892,13 @@ export default function TempleManagementSystem() {
                         <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
                       </div>
                       {userRole === 'admin' && (
-                        <button
-                          onClick={() => deleteDeposit(selectedBeliever.id, idx)}
-                          className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4"
-                        >
-                          삭제
-                        </button>
+                        <button onClick={() => deleteDeposit(selectedBeliever.id, idx)} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
                       )}
                     </div>
                   ))}
                   <div className="mt-3 pt-3 border-t-2 border-green-300">
                     <span className="font-bold text-green-900">총 입금액: </span>
-                    <span className="font-bold text-green-600 text-lg">
-                      {formatNumber(getTotalDepositAmount(selectedBeliever.deposits))}만원
-                    </span>
+                    <span className="font-bold text-green-600 text-lg">{formatNumber(getTotalDepositAmount(selectedBeliever.deposits))}만원</span>
                   </div>
                 </div>
               )}
@@ -1403,117 +907,45 @@ export default function TempleManagementSystem() {
                 <>
                   <h3 className="font-bold text-green-900 mb-4">새 입금내역 추가</h3>
                   <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-bold text-green-900 mb-2">날짜</label>
-                      <input
-                        type="date"
-                        value={depositForm.date}
-                        onChange={(e) => setDepositForm({...depositForm, date: e.target.value})}
-                        className="w-full px-4 py-2 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-green-900 mb-2">금액 (만원)</label>
-                      <input
-                        type="number"
-                        value={depositForm.amount}
-                        onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})}
-                        placeholder="0"
-                        className="w-full px-4 py-2 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
+                    <FormInput label="날짜" type="date" value={depositForm.date} onChange={(e) => setDepositForm({...depositForm, date: e.target.value})} />
+                    <FormInput label="금액 (만원)" type="number" value={depositForm.amount} onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})} placeholder="0" />
                   </div>
 
                   <div className="flex gap-4">
-                    <button
-                      onClick={addDeposit}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all"
-                    >
-                      추가하기
-                    </button>
-                    <button
-                      onClick={() => setShowDepositPopup(false)}
-                      className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                    >
-                      닫기
-                    </button>
+                    <button onClick={addDeposit} className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all">추가하기</button>
+                    <button onClick={() => setShowDepositPopup(false)} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
                   </div>
                 </>
               )}
 
               {userRole !== 'admin' && (
-                <button
-                  onClick={() => setShowDepositPopup(false)}
-                  className="w-full px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                >
-                  닫기
-                </button>
+                <button onClick={() => setShowDepositPopup(false)} className="w-full px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
               )}
             </div>
           </div>
         )}
 
+        {/* 신도 정보 수정 팝업 */}
         {showEditPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold text-amber-900 mb-6">신도 정보 수정</h2>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-bold text-amber-900 mb-2">이름 *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-amber-900 mb-2">전화번호 *</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-bold text-amber-900 mb-2">주소</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
+                <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
+                <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} />
+                <FormInput label="주소" className="col-span-2" type="text" name="address" value={formData.address} onChange={handleInputChange} />
               </div>
 
               <div className="flex gap-4">
-                <button
-                  onClick={confirmEdit}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
-                >
-                  수정 완료
-                </button>
-                <button
-                  onClick={() => {
-                    setShowEditPopup(false);
-                    setSelectedBeliever(null);
-                  }}
-                  className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                >
-                  취소
-                </button>
+                <button onClick={confirmEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
+                <button onClick={() => { setShowEditPopup(false); setSelectedBeliever(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
               </div>
             </div>
           </div>
         )}
 
+        {/* 삭제 확인 팝업 */}
         {showDeletePopup && selectedBeliever && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
@@ -1532,41 +964,19 @@ export default function TempleManagementSystem() {
               </div>
 
               <div className="flex gap-4">
-                <button
-                  onClick={confirmDelete}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all"
-                >
-                  삭제하기
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDeletePopup(false);
-                    setSelectedBeliever(null);
-                  }}
-                  className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold"
-                >
-                  취소
-                </button>
+                <button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowDeletePopup(false); setSelectedBeliever(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
               </div>
             </div>
           </div>
         )}
 
+        {/* 사진 크게 보기 모달 */}
         {viewPhotoModal && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" 
-            onClick={() => setViewPhotoModal(false)}
-          >
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" onClick={() => setViewPhotoModal(false)}>
             <div className="relative max-w-4xl w-full">
-              <img 
-                src={viewPhotoUrl} 
-                alt="불사 사진 확대" 
-                className="w-full rounded-lg shadow-2xl"
-              />
-              <button 
-                onClick={() => setViewPhotoModal(false)} 
-                className="absolute top-4 right-4 bg-white text-black rounded-full p-2 shadow-lg hover:bg-gray-100 transition"
-              >
+              <img src={viewPhotoUrl} alt="불사 사진 확대" className="w-full rounded-lg shadow-2xl" />
+              <button onClick={() => setViewPhotoModal(false)} className="absolute top-4 right-4 bg-white text-black rounded-full p-2 shadow-lg hover:bg-gray-100 transition">
                 <X className="w-6 h-6" />
               </button>
             </div>
