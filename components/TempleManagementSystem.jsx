@@ -124,6 +124,7 @@ export default function TempleManagementSystem() {
   const [editBulsaPhotoPreview, setEditBulsaPhotoPreview] = useState(null);
   const [viewPhotoModal, setViewPhotoModal] = useState(false);
   const [viewPhotoUrl, setViewPhotoUrl] = useState('');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURL: '' };
@@ -161,6 +162,64 @@ export default function TempleManagementSystem() {
     }
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  // 모바일 뒤로가기 버튼 처리
+  useEffect(() => {
+    const handlePopState = (e) => {
+      e.preventDefault();
+      
+      // 종료 확인 팝업이 열려있으면 닫기
+      if (showExitConfirm) {
+        setShowExitConfirm(false);
+        window.history.pushState(null, '', window.location.href);
+        return;
+      }
+      
+      // 열려있는 팝업 우선순위대로 닫기
+      if (viewPhotoModal) {
+        setViewPhotoModal(false);
+      } else if (showBulsaEditPopup) {
+        setShowBulsaEditPopup(false);
+        setEditingBulsaIndex(null);
+        setEditBulsaForm(emptyBulsa);
+        setEditBulsaPhotoFile(null);
+        setEditBulsaPhotoPreview(null);
+      } else if (showBulsaPopup) {
+        setShowBulsaPopup(false);
+      } else if (showDepositPopup) {
+        setShowDepositPopup(false);
+      } else if (showEditPopup) {
+        setShowEditPopup(false);
+        setSelectedBeliever(null);
+      } else if (showDeletePopup) {
+        setShowDeletePopup(false);
+        setSelectedBeliever(null);
+      } else if (showAddForm) {
+        setShowAddForm(false);
+        setPhotoFile(null);
+        setPhotoPreview(null);
+      } else {
+        // 팝업이 없으면 종료 확인 팝업 표시
+        setShowExitConfirm(true);
+        window.history.pushState(null, '', window.location.href);
+        return;
+      }
+      
+      // 팝업이 있었다면 히스토리 추가 (뒤로가기 막기)
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // 팝업이 열릴 때마다 히스토리 추가
+    if (showAddForm || showEditPopup || showDeletePopup || showBulsaPopup || showDepositPopup || showBulsaEditPopup || viewPhotoModal || showExitConfirm) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -202,6 +261,11 @@ export default function TempleManagementSystem() {
     setUserRole('');
     setLoginPassword('');
     setShowAddForm(false);
+  };
+
+  const handleExitApp = () => {
+    // PWA나 브라우저에서는 창을 닫을 수 없으므로 이전 페이지로 이동
+    window.history.back();
   };
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -995,6 +1059,38 @@ export default function TempleManagementSystem() {
               <button onClick={() => setViewPhotoModal(false)} className="absolute top-4 right-4 bg-white text-black rounded-full p-2 shadow-lg hover:bg-gray-100 transition">
                 <X className="w-6 h-6" />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 앱 종료 확인 팝업 */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">🚪</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">앱을 종료하시겠습니까?</h2>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleExitApp}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all text-sm sm:text-base"
+                >
+                  예
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    window.history.pushState(null, '', window.location.href);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold py-3 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all text-sm sm:text-base"
+                >
+                  아니오
+                </button>
+              </div>
             </div>
           </div>
         )}
