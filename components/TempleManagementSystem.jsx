@@ -163,14 +163,21 @@ export default function TempleManagementSystem() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // 초기 히스토리 설정
+  // 초기 히스토리 설정 (로그인 후에만)
   useEffect(() => {
-    window.history.pushState(null, '', window.location.href);
-  }, []);
+    if (isLoggedIn) {
+      window.history.pushState(null, '', window.location.href);
+    }
+  }, [isLoggedIn]);
 
   // 모바일 뒤로가기 버튼 처리
   useEffect(() => {
     const handlePopState = () => {
+      // 로그인 화면에서는 뒤로가기 처리 안 함 (기본 동작)
+      if (!isLoggedIn) {
+        return;
+      }
+
       // 종료 확인 팝업이 열려있으면 닫기
       if (showExitConfirm) {
         setShowExitConfirm(false);
@@ -220,14 +227,14 @@ export default function TempleManagementSystem() {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
+  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
 
   // 팝업이 열릴 때 히스토리 추가
   useEffect(() => {
-    if (showAddForm || showEditPopup || showDeletePopup || showBulsaPopup || showDepositPopup || showBulsaEditPopup || viewPhotoModal || showExitConfirm) {
+    if (isLoggedIn && (showAddForm || showEditPopup || showDeletePopup || showBulsaPopup || showDepositPopup || showBulsaEditPopup || viewPhotoModal || showExitConfirm)) {
       window.history.pushState(null, '', window.location.href);
     }
-  }, [showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
+  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showExitConfirm]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -272,8 +279,43 @@ export default function TempleManagementSystem() {
   };
 
   const handleExitApp = () => {
-    // PWA나 브라우저에서는 창을 닫을 수 없으므로 이전 페이지로 이동
-    window.history.back();
+    // Android WebView인 경우
+    if (typeof Android !== 'undefined' && Android.exitApp) {
+      Android.exitApp();
+      return;
+    }
+    
+    // iOS WebView인 경우
+    if (typeof webkit !== 'undefined' && webkit.messageHandlers && webkit.messageHandlers.exitApp) {
+      webkit.messageHandlers.exitApp.postMessage('exit');
+      return;
+    }
+    
+    // PWA나 일반 브라우저인 경우
+    // 1. 히스토리를 최대한 뒤로 이동
+    const historyLength = window.history.length;
+    if (historyLength > 1) {
+      // 첫 페이지까지 이동
+      window.history.go(-historyLength);
+      
+      // 잠시 후 창 닫기 시도
+      setTimeout(() => {
+        window.close();
+        
+        // 창이 안 닫히면 (PWA 등) about:blank로 이동
+        setTimeout(() => {
+          window.location.href = 'about:blank';
+        }, 100);
+      }, 100);
+    } else {
+      // 히스토리가 없으면 바로 닫기 시도
+      window.close();
+      
+      // 창이 안 닫히면 about:blank로 이동
+      setTimeout(() => {
+        window.location.href = 'about:blank';
+      }, 100);
+    }
   };
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
