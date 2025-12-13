@@ -258,7 +258,7 @@ export default function TempleManagementSystem() {
       let bulsaArray = [];
       const believerId = Date.now().toString();
       
-      if (newBulsaData.content && newBulsaData.amount && newBulsaData.person) {
+      if (newBulsaData.content && newBulsaData.amount) {
         let bulsaPhotoURL = '';
         if (photoFile) {
           bulsaPhotoURL = await uploadPhoto(photoFile, believerId);
@@ -336,8 +336,8 @@ export default function TempleManagementSystem() {
   };
 
   const addBulsa = async () => {
-    if (!bulsaForm.content || !bulsaForm.amount || !bulsaForm.person) {
-      alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
+    if (!bulsaForm.content || !bulsaForm.amount) {
+      alert('불사내용, 불사금액은 필수입니다.');
       return;
     }
     try {
@@ -389,8 +389,8 @@ export default function TempleManagementSystem() {
   };
 
   const confirmBulsaEdit = async () => {
-    if (!editBulsaForm.content || !editBulsaForm.amount || !editBulsaForm.person) {
-      alert('불사내용, 불사금액, 봉안자/복위자는 필수입니다.');
+    if (!editBulsaForm.content || !editBulsaForm.amount) {
+      alert('불사내용, 불사금액은 필수입니다.');
       return;
     }
     try {
@@ -668,24 +668,30 @@ export default function TempleManagementSystem() {
                               <span>{believer.name}</span>
                             )}
                           </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button
                               onClick={() => openBulsaPopup(believer)}
                               className="text-blue-600 hover:text-blue-800 font-semibold underline"
                             >
-                              {believer.bulsa && believer.bulsa.length > 0 
-                                ? `${believer.bulsa.length}건`
-                                : '없음'}
+                              {believer.bulsa && believer.bulsa.length > 0 ? (
+                                <div className="flex flex-col items-start leading-tight">
+                                  <span className="text-sm font-bold">{formatNumber(getTotalBulsaAmount(believer.bulsa))}만</span>
+                                  <span className="text-xs text-gray-500">{believer.bulsa.length}건</span>
+                                </div>
+                              ) : '없음'}
                             </button>
                           </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button
                               onClick={() => openDepositPopup(believer)}
                               className="text-green-600 hover:text-green-800 font-semibold underline"
                             >
-                              {believer.deposits && believer.deposits.length > 0
-                                ? `${believer.deposits.length}건`
-                                : '없음'}
+                              {believer.deposits && believer.deposits.length > 0 ? (
+                                <div className="flex flex-col items-start leading-tight">
+                                  <span className="text-sm font-bold">{formatNumber(getTotalDepositAmount(believer.deposits))}만</span>
+                                  <span className="text-xs text-gray-500">{believer.deposits.length}건</span>
+                                </div>
+                              ) : '없음'}
                             </button>
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right text-red-600 font-bold whitespace-nowrap">
