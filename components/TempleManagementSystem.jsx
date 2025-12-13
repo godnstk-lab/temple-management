@@ -163,41 +163,55 @@ export default function TempleManagementSystem() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
+  // 초기 히스토리 설정
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+  }, []);
+
   // 모바일 뒤로가기 버튼 처리
   useEffect(() => {
-    const handlePopState = (e) => {
+    const handlePopState = () => {
       // 종료 확인 팝업이 열려있으면 닫기
       if (showExitConfirm) {
         setShowExitConfirm(false);
+        window.history.pushState(null, '', window.location.href);
         return;
       }
       
       // 열려있는 팝업 우선순위대로 닫기
       if (viewPhotoModal) {
         setViewPhotoModal(false);
+        window.history.pushState(null, '', window.location.href);
       } else if (showBulsaEditPopup) {
         setShowBulsaEditPopup(false);
         setEditingBulsaIndex(null);
         setEditBulsaForm(emptyBulsa);
         setEditBulsaPhotoFile(null);
         setEditBulsaPhotoPreview(null);
+        window.history.pushState(null, '', window.location.href);
       } else if (showBulsaPopup) {
         setShowBulsaPopup(false);
+        window.history.pushState(null, '', window.location.href);
       } else if (showDepositPopup) {
         setShowDepositPopup(false);
+        window.history.pushState(null, '', window.location.href);
       } else if (showEditPopup) {
         setShowEditPopup(false);
         setSelectedBeliever(null);
+        window.history.pushState(null, '', window.location.href);
       } else if (showDeletePopup) {
         setShowDeletePopup(false);
         setSelectedBeliever(null);
+        window.history.pushState(null, '', window.location.href);
       } else if (showAddForm) {
         setShowAddForm(false);
         setPhotoFile(null);
         setPhotoPreview(null);
+        window.history.pushState(null, '', window.location.href);
       } else {
         // 팝업이 없으면 종료 확인 팝업 표시
         setShowExitConfirm(true);
+        window.history.pushState(null, '', window.location.href);
       }
     };
 
