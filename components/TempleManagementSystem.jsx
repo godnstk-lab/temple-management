@@ -124,6 +124,10 @@ export default function TempleManagementSystem() {
   const [editBulsaPhotoPreview, setEditBulsaPhotoPreview] = useState(null);
   const [viewPhotoModal, setViewPhotoModal] = useState(false);
   const [viewPhotoUrl, setViewPhotoUrl] = useState('');
+  const [showBulsaDeleteConfirm, setShowBulsaDeleteConfirm] = useState(false);
+  const [deleteBulsaInfo, setDeleteBulsaInfo] = useState(null);
+  const [showDepositDeleteConfirm, setShowDepositDeleteConfirm] = useState(false);
+  const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
   const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURL: '' };
@@ -173,11 +177,23 @@ export default function TempleManagementSystem() {
       }
       
       // 열려있는 팝업을 우선순위대로 닫기만 함 (히스토리 추가 없음)
-      // 우선순위: 사진확대 > 불사수정 > 불사추가 > 입금내역 > 신도수정 > 삭제확인 > 신도추가
+      // 우선순위: 사진확대 > 불사삭제확인 > 입금삭제확인 > 불사수정 > 불사추가 > 입금내역 > 신도수정 > 삭제확인 > 신도추가
       
       if (viewPhotoModal) {
         setViewPhotoModal(false);
         setViewPhotoUrl('');
+        return;
+      }
+      
+      if (showBulsaDeleteConfirm) {
+        setShowBulsaDeleteConfirm(false);
+        setDeleteBulsaInfo(null);
+        return;
+      }
+      
+      if (showDepositDeleteConfirm) {
+        setShowDepositDeleteConfirm(false);
+        setDeleteDepositInfo(null);
         return;
       }
       
@@ -242,7 +258,9 @@ export default function TempleManagementSystem() {
     showBulsaPopup, 
     showDepositPopup, 
     showBulsaEditPopup, 
-    viewPhotoModal
+    viewPhotoModal,
+    showBulsaDeleteConfirm,
+    showDepositDeleteConfirm
   ]);
 
   // 팝업이 열릴 때만 히스토리 추가 (닫힐 때는 추가 안 함)
@@ -253,7 +271,9 @@ export default function TempleManagementSystem() {
     showBulsaPopup: false,
     showDepositPopup: false,
     showBulsaEditPopup: false,
-    viewPhotoModal: false
+    viewPhotoModal: false,
+    showBulsaDeleteConfirm: false,
+    showDepositDeleteConfirm: false
   });
 
   useEffect(() => {
@@ -281,6 +301,12 @@ export default function TempleManagementSystem() {
     if (!prevPopupStates.current.viewPhotoModal && viewPhotoModal) {
       window.history.pushState(null, '', window.location.href);
     }
+    if (!prevPopupStates.current.showBulsaDeleteConfirm && showBulsaDeleteConfirm) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.showDepositDeleteConfirm && showDepositDeleteConfirm) {
+      window.history.pushState(null, '', window.location.href);
+    }
 
     // 현재 상태를 이전 상태로 저장
     prevPopupStates.current = {
@@ -290,9 +316,11 @@ export default function TempleManagementSystem() {
       showBulsaPopup,
       showDepositPopup,
       showBulsaEditPopup,
-      viewPhotoModal
+      viewPhotoModal,
+      showBulsaDeleteConfirm,
+      showDepositDeleteConfirm
     };
-  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal]);
+  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -941,7 +969,7 @@ export default function TempleManagementSystem() {
                       {userRole === 'admin' && (
                         <div className="flex gap-2">
                           <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
-                          <button onClick={() => deleteBulsa(selectedBeliever.id, idx)} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
+                          <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
                         </div>
                       )}
                     </div>
@@ -1040,7 +1068,7 @@ export default function TempleManagementSystem() {
                         <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
                       </div>
                       {userRole === 'admin' && (
-                        <button onClick={() => deleteDeposit(selectedBeliever.id, idx)} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
+                        <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index: idx, date: d.date, amount: d.amount }); setShowDepositDeleteConfirm(true); }} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
                       )}
                     </div>
                   ))}
@@ -1114,6 +1142,57 @@ export default function TempleManagementSystem() {
               <div className="flex gap-4">
                 <button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
                 <button onClick={() => { setShowDeletePopup(false); setSelectedBeliever(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 불사내용 삭제 확인 팝업 */}
+        {showBulsaDeleteConfirm && deleteBulsaInfo && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">불사내용 삭제</h2>
+                <p className="text-gray-600">정말 삭제하시겠습니까?</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">삭제할 불사내용:</p>
+                <p className="font-bold text-lg text-gray-800">{deleteBulsaInfo.content}</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => { deleteBulsa(deleteBulsaInfo.believerId, deleteBulsaInfo.index); setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 입금내역 삭제 확인 팝업 */}
+        {showDepositDeleteConfirm && deleteDepositInfo && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">입금내역 삭제</h2>
+                <p className="text-gray-600">정말 삭제하시겠습니까?</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">삭제할 입금내역:</p>
+                <p className="font-bold text-lg text-gray-800">{deleteDepositInfo.date}</p>
+                <p className="text-sm text-gray-600">{formatNumber(deleteDepositInfo.amount)}만원</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => { deleteDeposit(deleteDepositInfo.believerId, deleteDepositInfo.index); setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
               </div>
             </div>
           </div>
