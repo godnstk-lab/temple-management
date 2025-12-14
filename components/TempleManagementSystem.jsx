@@ -173,7 +173,7 @@ export default function TempleManagementSystem() {
   // 모바일 뒤로가기 버튼 처리
   // ============================================
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e) => {
       // 로그인 화면에서는 뒤로가기 기본 동작 허용
       if (!isLoggedIn) {
         return;
@@ -184,64 +184,98 @@ export default function TempleManagementSystem() {
       
       if (viewPhotoModal) {
         // 1. 사진 확대보기 모달 닫기
+        e.preventDefault();
         setViewPhotoModal(false);
         setViewPhotoUrl('');
+        // 다른 팝업이 남아있으면 히스토리 추가
+        if (showBulsaEditPopup || showBulsaPopup || showDepositPopup || showEditPopup || showDeletePopup || showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showBulsaEditPopup) {
         // 2. 불사 수정 팝업 닫기
+        e.preventDefault();
         setShowBulsaEditPopup(false);
         setEditingBulsaIndex(null);
         setEditBulsaForm(emptyBulsa);
         setEditBulsaPhotoFile(null);
         setEditBulsaPhotoPreview(null);
+        // 불사내용 팝업이 열려있으면 히스토리 추가
+        if (showBulsaPopup || showDepositPopup || showEditPopup || showDeletePopup || showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showBulsaPopup) {
         // 3. 불사 추가 팝업 닫기
+        e.preventDefault();
         setShowBulsaPopup(false);
         setBulsaForm(emptyBulsa);
         setBulsaPhotoFile(null);
         setBulsaPhotoPreview(null);
+        // 다른 팝업이 남아있으면 히스토리 추가
+        if (showDepositPopup || showEditPopup || showDeletePopup || showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showDepositPopup) {
         // 4. 입금내역 팝업 닫기
+        e.preventDefault();
         setShowDepositPopup(false);
         setDepositForm(emptyDeposit);
+        // 다른 팝업이 남아있으면 히스토리 추가
+        if (showEditPopup || showDeletePopup || showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showEditPopup) {
         // 5. 신도 정보 수정 팝업 닫기
+        e.preventDefault();
         setShowEditPopup(false);
         setSelectedBeliever(null);
         setFormData(emptyForm);
+        // 다른 팝업이 남아있으면 히스토리 추가
+        if (showDeletePopup || showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showDeletePopup) {
         // 6. 삭제 확인 팝업 닫기
+        e.preventDefault();
         setShowDeletePopup(false);
         setSelectedBeliever(null);
+        // 다른 팝업이 남아있으면 히스토리 추가
+        if (showAddForm) {
+          window.history.pushState(null, '', window.location.href);
+        }
         return;
       }
       
       if (showAddForm) {
         // 7. 신도 추가 폼 닫기
+        e.preventDefault();
         setShowAddForm(false);
         setFormData(emptyForm);
         setNewBulsaData(emptyBulsa);
         setPhotoFile(null);
         setPhotoPreview(null);
+        // 메인 화면으로 히스토리 추가
+        window.history.pushState(null, '', window.location.href);
         return;
       }
       
-      // 모든 팝업이 닫혀있으면 기본 뒤로가기 동작 (앱 종료 또는 이전 페이지)
-      // 아무것도 하지 않으면 브라우저의 기본 뒤로가기 동작이 실행됨
+      // 모든 팝업이 닫혀있으면 기본 뒤로가기 동작 방지하고 메인 화면 유지
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.href);
     };
 
     window.addEventListener('popstate', handlePopState);
