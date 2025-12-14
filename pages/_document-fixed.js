@@ -1,5 +1,4 @@
 import { Html, Head, Main, NextScript } from 'next/document';
-
 export default function Document() {
   return (
     <Html lang="ko">
@@ -9,6 +8,7 @@ export default function Document() {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="해운사" />
         <meta name="theme-color" content="#d97706" />
+        <meta name="description" content="해운사 신도관리 시스템" />
         
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" />
