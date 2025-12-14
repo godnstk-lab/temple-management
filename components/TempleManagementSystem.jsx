@@ -245,30 +245,54 @@ export default function TempleManagementSystem() {
     viewPhotoModal
   ]);
 
-  // 팝업이 열릴 때마다 히스토리에 새 항목 추가
-  // 이렇게 하면 뒤로가기 버튼으로 팝업을 하나씩 닫을 수 있음
+  // 팝업이 열릴 때만 히스토리 추가 (닫힐 때는 추가 안 함)
+  const prevPopupStates = React.useRef({
+    showAddForm: false,
+    showEditPopup: false,
+    showDeletePopup: false,
+    showBulsaPopup: false,
+    showDepositPopup: false,
+    showBulsaEditPopup: false,
+    viewPhotoModal: false
+  });
+
   useEffect(() => {
-    if (isLoggedIn && (
-      showAddForm || 
-      showEditPopup || 
-      showDeletePopup || 
-      showBulsaPopup || 
-      showDepositPopup || 
-      showBulsaEditPopup || 
-      viewPhotoModal
-    )) {
+    if (!isLoggedIn) return;
+
+    // 각 팝업이 false → true로 바뀔 때만 히스토리 추가
+    if (!prevPopupStates.current.showAddForm && showAddForm) {
       window.history.pushState(null, '', window.location.href);
     }
-  }, [
-    isLoggedIn, 
-    showAddForm, 
-    showEditPopup, 
-    showDeletePopup, 
-    showBulsaPopup, 
-    showDepositPopup, 
-    showBulsaEditPopup, 
-    viewPhotoModal
-  ]);
+    if (!prevPopupStates.current.showEditPopup && showEditPopup) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.showDeletePopup && showDeletePopup) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.showBulsaPopup && showBulsaPopup) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.showDepositPopup && showDepositPopup) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.showBulsaEditPopup && showBulsaEditPopup) {
+      window.history.pushState(null, '', window.location.href);
+    }
+    if (!prevPopupStates.current.viewPhotoModal && viewPhotoModal) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    // 현재 상태를 이전 상태로 저장
+    prevPopupStates.current = {
+      showAddForm,
+      showEditPopup,
+      showDeletePopup,
+      showBulsaPopup,
+      showDepositPopup,
+      showBulsaEditPopup,
+      viewPhotoModal
+    };
+  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
