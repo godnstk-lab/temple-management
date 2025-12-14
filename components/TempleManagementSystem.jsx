@@ -162,13 +162,6 @@ export default function TempleManagementSystem() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // 초기 히스토리 설정 (로그인 후에만)
-  useEffect(() => {
-    if (isLoggedIn) {
-      window.history.pushState(null, '', window.location.href);
-    }
-  }, [isLoggedIn]);
-
   // ============================================
   // 모바일 뒤로가기 버튼 처리
   // ============================================
