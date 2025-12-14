@@ -186,7 +186,6 @@ export default function TempleManagementSystem() {
         // 1. 사진 확대보기 모달 닫기
         setViewPhotoModal(false);
         setViewPhotoUrl('');
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -197,7 +196,6 @@ export default function TempleManagementSystem() {
         setEditBulsaForm(emptyBulsa);
         setEditBulsaPhotoFile(null);
         setEditBulsaPhotoPreview(null);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -207,7 +205,6 @@ export default function TempleManagementSystem() {
         setBulsaForm(emptyBulsa);
         setBulsaPhotoFile(null);
         setBulsaPhotoPreview(null);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -215,7 +212,6 @@ export default function TempleManagementSystem() {
         // 4. 입금내역 팝업 닫기
         setShowDepositPopup(false);
         setDepositForm(emptyDeposit);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -224,7 +220,6 @@ export default function TempleManagementSystem() {
         setShowEditPopup(false);
         setSelectedBeliever(null);
         setFormData(emptyForm);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -232,7 +227,6 @@ export default function TempleManagementSystem() {
         // 6. 삭제 확인 팝업 닫기
         setShowDeletePopup(false);
         setSelectedBeliever(null);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
@@ -243,7 +237,6 @@ export default function TempleManagementSystem() {
         setNewBulsaData(emptyBulsa);
         setPhotoFile(null);
         setPhotoPreview(null);
-        window.history.pushState(null, '', window.location.href);
         return;
       }
       
