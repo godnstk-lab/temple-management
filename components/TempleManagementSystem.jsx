@@ -365,7 +365,7 @@ export default function TempleManagementSystem() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
-  // 이미지 압축 함수
+  // 이미지 압축 함수 (원본)
   const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -407,6 +407,16 @@ export default function TempleManagementSystem() {
       reader.onerror = reject;
     });
   };
+
+  // 썸네일 생성 함수 (작은 크기 - 목록용)
+  const createThumbnail = (file) => {
+    return compressImage(file, 300, 0.6); // 300px, 60% 품질
+  };
+  
+  // 원본 생성 함수 (큰 크기 - 전체화면용)
+  const createOriginal = (file) => {
+    return compressImage(file, 1920, 0.85); // 1920px, 85% 품질
+  };
   
   const handlePhotoChange = async (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
     const file = e.target.files[0];
@@ -427,19 +437,23 @@ export default function TempleManagementSystem() {
     }
     
     try {
-      // 이미지 압축
-      const compressedFile = await compressImage(file);
-      console.log(`압축 전: ${(file.size / 1024).toFixed(2)}KB → 압축 후: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+      // 원본 이미지 압축 (1920px로 증가)
+      const compressedFile = await createOriginal(file);
+      // 썸네일 생성 (300px로 축소)
+      const thumbnailFile = await createThumbnail(file);
       
-      filesSetter([...currentFiles, compressedFile]);
+      console.log(`원본: ${(file.size / 1024).toFixed(2)}KB → 압축: ${(compressedFile.size / 1024).toFixed(2)}KB → 썸네일: ${(thumbnailFile.size / 1024).toFixed(2)}KB`);
+      
+      // 원본과 썸네일을 함께 저장
+      filesSetter([...currentFiles, { original: compressedFile, thumbnail: thumbnailFile }]);
       
       const reader = new FileReader();
       reader.onloadend = () => {
         previewsSetter([...currentPreviews, reader.result]);
       };
-      reader.readAsDataURL(compressedFile);
+      reader.readAsDataURL(thumbnailFile);
     } catch (error) {
-      console.error('이미지 압축 실패:', error);
+      console.error('이미지 처리 실패:', error);
       alert('이미지 처리에 실패했습니다.');
     }
   };
@@ -449,10 +463,11 @@ export default function TempleManagementSystem() {
     previewsSetter(currentPreviews.filter((_, i) => i !== index));
   };
 
-  const uploadPhoto = async (file, believerId, isBulsa = false, bulsaId = null) => {
+  const uploadPhoto = async (file, believerId, isBulsa = false, bulsaId = null, isThumbnail = false) => {
     try {
       const timestamp = Date.now();
-      const fileName = isBulsa ? `bulsa_${bulsaId}_${timestamp}.jpg` : `${timestamp}.jpg`;
+      const suffix = isThumbnail ? '_thumb' : '';
+      const fileName = isBulsa ? `bulsa_${bulsaId}_${timestamp}${suffix}.jpg` : `${timestamp}${suffix}.jpg`;
       const path = isBulsa ? `believers/${believerId}/bulsa/${fileName}` : `believers/${believerId}/${fileName}`;
       const photoRef = storageRef(storage, path);
       
@@ -470,16 +485,24 @@ export default function TempleManagementSystem() {
     }
   };
   
-  // 여러 사진을 병렬로 업로드
+  // 여러 사진을 병렬로 업로드 (썸네일 + 원본)
   const uploadPhotosInParallel = async (files, believerId, isBulsa = false, bulsaId = null) => {
     setUploadProgress(0);
     let completedUploads = 0;
+    const totalFiles = files.length * 2; // 썸네일 + 원본
     
-    const uploadPromises = files.map(async (file) => {
-      const result = await uploadPhoto(file, believerId, isBulsa, bulsaId);
+    const uploadPromises = files.map(async (fileObj) => {
+      // 썸네일 업로드
+      const thumbnailURL = await uploadPhoto(fileObj.thumbnail, believerId, isBulsa, bulsaId, true);
       completedUploads++;
-      setUploadProgress(Math.round((completedUploads / files.length) * 100));
-      return result;
+      setUploadProgress(Math.round((completedUploads / totalFiles) * 100));
+      
+      // 원본 업로드
+      const originalURL = await uploadPhoto(fileObj.original, believerId, isBulsa, bulsaId, false);
+      completedUploads++;
+      setUploadProgress(Math.round((completedUploads / totalFiles) * 100));
+      
+      return { thumbnail: thumbnailURL, original: originalURL };
     });
     
     const results = await Promise.all(uploadPromises);
@@ -1077,17 +1100,23 @@ export default function TempleManagementSystem() {
                       </div>
                       {b.photoURLs && b.photoURLs.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-2">
-                          {b.photoURLs.map((photoURL, photoIdx) => (
-                            <img 
-                              key={photoIdx}
-                              src={photoURL} 
-                              alt={`불사 사진 ${photoIdx + 1}`}
-                              onClick={() => { setViewPhotoUrl(photoURL); setViewPhotoModal(true); }} 
-                              className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ))}
+                          {b.photoURLs.map((photoData, photoIdx) => {
+                            // 새 형식 (썸네일 + 원본) 또는 구 형식 (URL만) 지원
+                            const thumbnailUrl = typeof photoData === 'object' ? photoData.thumbnail : photoData;
+                            const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
+                            
+                            return (
+                              <img 
+                                key={photoIdx}
+                                src={thumbnailUrl} 
+                                alt={`불사 사진 ${photoIdx + 1}`}
+                                onClick={() => { setViewPhotoUrl(originalUrl); setViewPhotoModal(true); }} 
+                                className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            );
+                          })}
                         </div>
                       )}
                       {b.photoURL && !b.photoURLs && (
@@ -1362,18 +1391,47 @@ export default function TempleManagementSystem() {
           </div>
         )}
 
-        {/* 사진 크게 보기 모달 */}
+        {/* 사진 크게 보기 모달 - 전체화면 최적화 */}
         {viewPhotoModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" onClick={() => setViewPhotoModal(false)}>
-            <div className="relative max-w-4xl w-full">
-              <img src={viewPhotoUrl} alt="불사 사진 확대" className="w-full rounded-lg shadow-2xl" />
-              <button onClick={() => setViewPhotoModal(false)} className="absolute top-4 right-4 bg-white text-black rounded-full p-2 shadow-lg hover:bg-gray-100 transition">
+          <div 
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center" 
+            onClick={() => setViewPhotoModal(false)}
+            style={{
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)'
+            }}
+          >
+            <div className="relative w-full h-full flex items-center justify-center">
+              <img 
+                src={viewPhotoUrl} 
+                alt="불사 사진 확대" 
+                className="max-w-full max-h-full object-contain"
+                style={{ 
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100vw',
+                  maxHeight: '100vh'
+                }}
+              />
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewPhotoModal(false); }} 
+                className="absolute top-4 right-4 bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-3 shadow-2xl transition-all z-10"
+                style={{
+                  top: 'max(1rem, env(safe-area-inset-top))',
+                  right: 'max(1rem, env(safe-area-inset-right))'
+                }}
+              >
                 <X className="w-6 h-6" />
               </button>
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
+                화면을 탭하면 닫힙니다
+              </div>
             </div>
           </div>
         )}
       </div>
     </div>
   );
-                        }
+                                            }
