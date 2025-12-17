@@ -204,15 +204,8 @@ export default function TempleManagementSystem() {
       }
       
       if (showBulsaEditPopup) {
-  // 스크롤 위치 복원
-  const scrollY = document.body.style.top;
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  window.scrollTo(0, parseInt(scrollY || '0') * -1);
-  
-  setShowBulsaEditPopup(false);
-  setEditingBulsaIndex(null);
+        setShowBulsaEditPopup(false);
+        setEditingBulsaIndex(null);
         setEditBulsaForm(emptyBulsa);
         setEditBulsaPhotoFiles([]);
         setEditBulsaPhotoPreviews([]);
@@ -669,19 +662,13 @@ export default function TempleManagementSystem() {
   };
 
   const openBulsaEditPopup = (index) => {
-  // 현재 스크롤 위치 저장 및 body 고정
-  const scrollY = window.scrollY;
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.width = '100%';
-  
-  setEditingBulsaIndex(index);
-  const bulsaItem = selectedBeliever.bulsa[index];
-  setEditBulsaForm({ ...bulsaItem });
-  setEditBulsaPhotoFiles([]);
-  setEditBulsaPhotoPreviews([]);
-  setShowBulsaEditPopup(true);
-};
+    setEditingBulsaIndex(index);
+    const bulsaItem = selectedBeliever.bulsa[index];
+    setEditBulsaForm({ ...bulsaItem });
+    setEditBulsaPhotoFiles([]);
+    setEditBulsaPhotoPreviews([]);
+    setShowBulsaEditPopup(true);
+  };
   
   const confirmBulsaEdit = async () => {
     if (!editBulsaForm.content || !editBulsaForm.amount) {
@@ -711,12 +698,6 @@ export default function TempleManagementSystem() {
       await saveBelievers(updatedBelievers);
       setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
       alert('불사내용이 수정되었습니다.');
-      // 스크롤 위치 복원
-const scrollY = document.body.style.top;
-document.body.style.position = '';
-document.body.style.top = '';
-document.body.style.width = '';
-window.scrollTo(0, parseInt(scrollY || '0') * -1);
       setShowBulsaEditPopup(false);
       setEditingBulsaIndex(null);
       setEditBulsaForm(emptyBulsa);
@@ -1197,20 +1178,7 @@ window.scrollTo(0, parseInt(scrollY || '0') * -1);
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
-                <button onClick={() => { 
-  // 스크롤 위치 복원
-  const scrollY = document.body.style.top;
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  window.scrollTo(0, parseInt(scrollY || '0') * -1);
-  
-  setShowBulsaEditPopup(false); 
-  setEditingBulsaIndex(null); 
-  setEditBulsaForm(emptyBulsa); 
-  setEditBulsaPhotoFiles([]); 
-  setEditBulsaPhotoPreviews([]); 
-}} className="text-gray-500 hover:text-gray-700">
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="text-gray-500 hover:text-gray-700">
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
@@ -1423,25 +1391,23 @@ window.scrollTo(0, parseInt(scrollY || '0') * -1);
           </div>
         )}
 
-      {/* 사진 크게 보기 모달 - 전체화면 최적화 */}
-{viewPhotoModal && (
-  <div 
-    className="fixed inset-0 bg-black z-50" 
-    onClick={() => setViewPhotoModal(false)}
-    style={{
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      margin: 0,
-      padding: 0
-    }}
-  >
-    <div className="w-full h-full flex items-center justify-center">
-      <img 
-        src={viewPhotoUrl} 
-        alt="불사 사진 확대" 
-        className="w-full h-full object-contain"
+        {/* 사진 크게 보기 모달 - 전체화면 최적화 */}
+        {viewPhotoModal && (
+          <div 
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center" 
+            onClick={() => setViewPhotoModal(false)}
+            style={{
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)'
+            }}
+          >
+            <div className="relative w-full h-full flex items-center justify-center">
+              <img 
+                src={viewPhotoUrl} 
+                alt="불사 사진 확대" 
+                className="max-w-full max-h-full object-contain"
                 style={{ 
                   width: 'auto',
                   height: 'auto',
@@ -1449,13 +1415,17 @@ window.scrollTo(0, parseInt(scrollY || '0') * -1);
                   maxHeight: '100vh'
                 }}
               />
-             <button 
-  onClick={(e) => { e.stopPropagation(); setViewPhotoModal(false); }} 
-  className="fixed top-4 right-4 bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-3 shadow-2xl transition-all z-10"
->
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewPhotoModal(false); }} 
+                className="absolute top-4 right-4 bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-3 shadow-2xl transition-all z-10"
+                style={{
+                  top: 'max(1rem, env(safe-area-inset-top))',
+                  right: 'max(1rem, env(safe-area-inset-right))'
+                }}
+              >
                 <X className="w-6 h-6" />
               </button>
-              <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
                 화면을 탭하면 닫힙니다
               </div>
             </div>
