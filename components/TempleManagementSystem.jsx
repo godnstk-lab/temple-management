@@ -1028,7 +1028,7 @@ const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPr
           className="w-32 h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
         />
       </div>
-    )}
+)}
   </div>
 ))}
 <div className="mt-3 pt-3 border-t-2 border-amber-300">
