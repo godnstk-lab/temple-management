@@ -20,8 +20,8 @@ const database = getDatabase(app);
 const storage = getStorage(app);
 
 // 재사용 가능한 컴포넌트들
-const PhotoUploadButtons = ({ onPhotoChange, show }) => {
-  if (!show) return null;
+const PhotoUploadButtons = ({ onPhotoChange, show, currentCount = 0, maxCount = 3 }) => {
+  if (!show || currentCount >= maxCount) return null;
   return (
     <div className="flex gap-2">
       <label className="cursor-pointer" title="카메라로 촬영">
@@ -40,21 +40,29 @@ const PhotoUploadButtons = ({ onPhotoChange, show }) => {
   );
 };
 
-const PhotoPreview = ({ src, onRemove }) => {
-  if (!src) return null;
+// PhotoPreview 컴포넌트를 완전히 삭제하고 아래 컴포넌트로 교체:
+
+const MultiPhotoPreview = ({ photos, onRemove }) => {
+  if (!photos || photos.length === 0) return null;
   return (
     <div className="mb-3 sm:mb-4 bg-amber-50 p-4 rounded-lg border-2 border-amber-200">
-      <div className="relative">
-        <img src={src} alt="미리보기" className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-amber-300" />
-        <button type="button" onClick={onRemove} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors">
-          <X className="w-4 h-4" />
-        </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        {photos.map((photo, index) => (
+          <div key={index} className="relative">
+            <img src={photo} alt={`미리보기 ${index + 1}`} className="w-full h-48 object-cover rounded-lg shadow-lg border-2 border-amber-300" />
+            <button type="button" onClick={() => onRemove(index)} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+              {index + 1}/3
+            </div>
+          </div>
+        ))}
       </div>
-      <p className="text-center text-xs text-gray-500 mt-2">사진 선택됨 (×를 눌러 변경)</p>
+      <p className="text-center text-xs text-gray-500 mt-2">사진 {photos.length}/3장 (×를 눌러 삭제)</p>
     </div>
   );
 };
-
 const SizeSelector = ({ value, onChange }) => (
   <div>
     <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
@@ -115,13 +123,13 @@ export default function TempleManagementSystem() {
   const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallButton, setShowInstallButton] = useState(true);
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [bulsaPhotoFile, setBulsaPhotoFile] = useState(null);
-  const [bulsaPhotoPreview, setBulsaPhotoPreview] = useState(null);
-  const [editBulsaPhotoFile, setEditBulsaPhotoFile] = useState(null);
-  const [editBulsaPhotoPreview, setEditBulsaPhotoPreview] = useState(null);
+  const [photoFiles, setPhotoFiles] = useState([]);
+const [photoPreviews, setPhotoPreviews] = useState([]);
+const [isUploading, setIsUploading] = useState(false);
+const [bulsaPhotoFiles, setBulsaPhotoFiles] = useState([]);
+const [bulsaPhotoPreviews, setBulsaPhotoPreviews] = useState([]);
+const [editBulsaPhotoFiles, setEditBulsaPhotoFiles] = useState([]);
+const [editBulsaPhotoPreviews, setEditBulsaPhotoPreviews] = useState([]);
   const [viewPhotoModal, setViewPhotoModal] = useState(false);
   const [viewPhotoUrl, setViewPhotoUrl] = useState('');
   const [showBulsaDeleteConfirm, setShowBulsaDeleteConfirm] = useState(false);
@@ -130,7 +138,7 @@ export default function TempleManagementSystem() {
   const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
   
   const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
-  const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURL: '' };
+  const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURLs: [] };
   const emptyDeposit = { date: '', amount: '' };
   
   const [formData, setFormData] = useState(emptyForm);
@@ -198,21 +206,21 @@ export default function TempleManagementSystem() {
       }
       
       if (showBulsaEditPopup) {
-        setShowBulsaEditPopup(false);
-        setEditingBulsaIndex(null);
-        setEditBulsaForm(emptyBulsa);
-        setEditBulsaPhotoFile(null);
-        setEditBulsaPhotoPreview(null);
-        return;
-      }
-      
-      if (showBulsaPopup) {
-        setShowBulsaPopup(false);
-        setBulsaForm(emptyBulsa);
-        setBulsaPhotoFile(null);
-        setBulsaPhotoPreview(null);
-        return;
-      }
+  setShowBulsaEditPopup(false);
+  setEditingBulsaIndex(null);
+  setEditBulsaForm(emptyBulsa);
+  setEditBulsaPhotoFiles([]);
+  setEditBulsaPhotoPreviews([]);
+  return;
+}
+
+if (showBulsaPopup) {
+  setShowBulsaPopup(false);
+  setBulsaForm(emptyBulsa);
+  setBulsaPhotoFiles([]);
+  setBulsaPhotoPreviews([]);
+  return;
+}
       
       if (showDepositPopup) {
         setShowDepositPopup(false);
@@ -234,13 +242,13 @@ export default function TempleManagementSystem() {
       }
       
       if (showAddForm) {
-        setShowAddForm(false);
-        setFormData(emptyForm);
-        setNewBulsaData(emptyBulsa);
-        setPhotoFile(null);
-        setPhotoPreview(null);
-        return;
-      }
+  setShowAddForm(false);
+  setFormData(emptyForm);
+  setNewBulsaData(emptyBulsa);
+  setPhotoFiles([]);
+  setPhotoPreviews([]);
+  return;
+}
       
       // 모든 팝업이 닫혀있으면 기본 뒤로가기 동작 (앱 종료 또는 이전 페이지)
     };
@@ -366,23 +374,37 @@ export default function TempleManagementSystem() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
-  const handlePhotoChange = (e, setter, previewSetter) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert('파일 크기는 10MB 이하여야 합니다.');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert('이미지 파일만 업로드 가능합니다.');
-        return;
-      }
-      setter(file);
-      const reader = new FileReader();
-      reader.onloadend = () => previewSetter(reader.result);
-      reader.readAsDataURL(file);
-    }
+const handlePhotoChange = (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (currentFiles.length >= 3) {
+    alert('사진은 최대 3장까지 등록할 수 있습니다.');
+    return;
+  }
+  
+  if (file.size > 10 * 1024 * 1024) {
+    alert('파일 크기는 10MB 이하여야 합니다.');
+    return;
+  }
+  if (!file.type.startsWith('image/')) {
+    alert('이미지 파일만 업로드 가능합니다.');
+    return;
+  }
+  
+  filesSetter([...currentFiles, file]);
+  
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    previewsSetter([...currentPreviews, reader.result]);
   };
+  reader.readAsDataURL(file);
+};
+
+const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+  filesSetter(currentFiles.filter((_, i) => i !== index));
+  previewsSetter(currentPreviews.filter((_, i) => i !== index));
+};
 
   const uploadPhoto = async (file, believerId, isBulsa = false, bulsaId = null) => {
     try {
@@ -421,42 +443,44 @@ export default function TempleManagementSystem() {
   const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
   const handleAddBeliever = async () => {
-    if (!formData.name || !formData.phone) {
-      alert('이름과 전화번호는 필수입니다.');
-      return;
-    }
-    setIsUploading(true);
-    try {
-      let bulsaArray = [];
-      const believerId = Date.now().toString();
-      
-      if (newBulsaData.content && newBulsaData.amount) {
-        let bulsaPhotoURL = '';
-        if (photoFile) {
-          bulsaPhotoURL = await uploadPhoto(photoFile, believerId);
+  if (!formData.name || !formData.phone) {
+    alert('이름과 전화번호는 필수입니다.');
+    return;
+  }
+  setIsUploading(true);
+  try {
+    let bulsaArray = [];
+    const believerId = Date.now().toString();
+    
+    if (newBulsaData.content && newBulsaData.amount) {
+      let bulsaPhotoURLs = [];
+      if (photoFiles.length > 0) {
+        for (const file of photoFiles) {
+          const url = await uploadPhoto(file, believerId);
+          bulsaPhotoURLs.push(url);
         }
-        bulsaArray = [{ ...newBulsaData, photoURL: bulsaPhotoURL }];
       }
-      
-      const { unpaid } = calcTotals(bulsaArray, []);
-      const newBeliever = { id: believerId, ...formData, bulsa: bulsaArray, deposits: [], unpaid };
-      
-      const updatedBelievers = [...believers, newBeliever];
-      setBelievers(updatedBelievers);
-      await saveBelievers(updatedBelievers);
-      alert('새 신도가 추가되었습니다.');
-      setFormData(emptyForm);
-      setNewBulsaData(emptyBulsa);
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      setShowAddForm(false);
-    } catch (error) {
-      alert('신도 추가에 실패했습니다: ' + error.message);
-    } finally {
-      setIsUploading(false);
+      bulsaArray = [{ ...newBulsaData, photoURLs: bulsaPhotoURLs }];
     }
-  };
-
+    
+    const { unpaid } = calcTotals(bulsaArray, []);
+    const newBeliever = { id: believerId, ...formData, bulsa: bulsaArray, deposits: [], unpaid };
+    
+    const updatedBelievers = [...believers, newBeliever];
+    setBelievers(updatedBelievers);
+    await saveBelievers(updatedBelievers);
+    alert('새 신도가 추가되었습니다.');
+    setFormData(emptyForm);
+    setNewBulsaData(emptyBulsa);
+    setPhotoFiles([]);
+    setPhotoPreviews([]);
+    setShowAddForm(false);
+  } catch (error) {
+    alert('신도 추가에 실패했습니다: ' + error.message);
+  } finally {
+    setIsUploading(false);
+  }
+};
   const handleEdit = (believer) => {
     setSelectedBeliever(believer);
     setFormData({ ...believer, bulsa: believer.bulsa || [], deposits: believer.deposits || [], unpaid: believer.unpaid || '' });
@@ -494,43 +518,46 @@ export default function TempleManagementSystem() {
   };
 
   const openBulsaPopup = (believer) => {
-    setSelectedBeliever(believer);
-    setBulsaForm(emptyBulsa);
-    setBulsaPhotoFile(null);
-    setBulsaPhotoPreview(null);
-    setShowBulsaPopup(true);
-  };
+  setSelectedBeliever(believer);
+  setBulsaForm(emptyBulsa);
+  setBulsaPhotoFiles([]);
+  setBulsaPhotoPreviews([]);
+  setShowBulsaPopup(true);
+};
 
   const addBulsa = async () => {
-    if (!bulsaForm.content || !bulsaForm.amount) {
-      alert('불사내용, 불사금액은 필수입니다.');
-      return;
-    }
-    try {
-      let bulsaPhotoURL = '';
-      if (bulsaPhotoFile) {
-        const bulsaId = Date.now().toString();
-        bulsaPhotoURL = await uploadPhoto(bulsaPhotoFile, selectedBeliever.id, true, bulsaId);
+  if (!bulsaForm.content || !bulsaForm.amount) {
+    alert('불사내용, 불사금액은 필수입니다.');
+    return;
+  }
+  try {
+    let bulsaPhotoURLs = [];
+    if (bulsaPhotoFiles.length > 0) {
+      const bulsaId = Date.now().toString();
+      for (const file of bulsaPhotoFiles) {
+        const url = await uploadPhoto(file, selectedBeliever.id, true, bulsaId);
+        bulsaPhotoURLs.push(url);
       }
-      const updatedBelievers = believers.map(b => {
-        if (b.id === selectedBeliever.id) {
-          const newBulsa = [...(b.bulsa || []), { ...bulsaForm, photoURL: bulsaPhotoURL }];
-          const { unpaid } = calcTotals(newBulsa, b.deposits || []);
-          return { ...b, bulsa: newBulsa, unpaid };
-        }
-        return b;
-      });
-      setBelievers(updatedBelievers);
-      await saveBelievers(updatedBelievers);
-      setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
-      alert('불사내용이 추가되었습니다.');
-      setBulsaForm(emptyBulsa);
-      setBulsaPhotoFile(null);
-      setBulsaPhotoPreview(null);
-    } catch (error) {
-      alert('불사 추가 실패: ' + error.message);
     }
-  };
+    const updatedBelievers = believers.map(b => {
+      if (b.id === selectedBeliever.id) {
+        const newBulsa = [...(b.bulsa || []), { ...bulsaForm, photoURLs: bulsaPhotoURLs }];
+        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+        return { ...b, bulsa: newBulsa, unpaid };
+      }
+      return b;
+    });
+    setBelievers(updatedBelievers);
+    await saveBelievers(updatedBelievers);
+    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+    alert('불사내용이 추가되었습니다.');
+    setBulsaForm(emptyBulsa);
+    setBulsaPhotoFiles([]);
+    setBulsaPhotoPreviews([]);
+  } catch (error) {
+    alert('불사 추가 실패: ' + error.message);
+  }
+};
 
   const deleteBulsa = (believerId, index) => {
     const updatedBelievers = believers.map(b => {
@@ -547,46 +574,52 @@ export default function TempleManagementSystem() {
   };
 
   const openBulsaEditPopup = (index) => {
-    setEditingBulsaIndex(index);
-    setEditBulsaForm({ ...selectedBeliever.bulsa[index] });
-    setEditBulsaPhotoFile(null);
-    setEditBulsaPhotoPreview(null);
-    setShowBulsaEditPopup(true);
-  };
-
+  setEditingBulsaIndex(index);
+  const bulsaItem = selectedBeliever.bulsa[index];
+  setEditBulsaForm({ ...bulsaItem });
+  setEditBulsaPhotoFiles([]);
+  setEditBulsaPhotoPreviews([]);
+  setShowBulsaEditPopup(true);
+};
+  
   const confirmBulsaEdit = async () => {
-    if (!editBulsaForm.content || !editBulsaForm.amount) {
-      alert('불사내용, 불사금액은 필수입니다.');
-      return;
-    }
-    try {
-      let updatedPhotoURL = editBulsaForm.photoURL || '';
-      if (editBulsaPhotoFile) {
-        const bulsaId = Date.now().toString();
-        updatedPhotoURL = await uploadPhoto(editBulsaPhotoFile, selectedBeliever.id, true, bulsaId);
+  if (!editBulsaForm.content || !editBulsaForm.amount) {
+    alert('불사내용, 불사금액은 필수입니다.');
+    return;
+  }
+  try {
+    let updatedPhotoURLs = [...(editBulsaForm.photoURLs || [])];
+    
+    if (editBulsaPhotoFiles.length > 0) {
+      const bulsaId = Date.now().toString();
+      for (const file of editBulsaPhotoFiles) {
+        const url = await uploadPhoto(file, selectedBeliever.id, true, bulsaId);
+        updatedPhotoURLs.push(url);
       }
-      const updatedBelievers = believers.map(b => {
-        if (b.id === selectedBeliever.id) {
-          const newBulsa = [...b.bulsa];
-          newBulsa[editingBulsaIndex] = { ...editBulsaForm, photoURL: updatedPhotoURL };
-          const { unpaid } = calcTotals(newBulsa, b.deposits || []);
-          return { ...b, bulsa: newBulsa, unpaid };
-        }
-        return b;
-      });
-      setBelievers(updatedBelievers);
-      await saveBelievers(updatedBelievers);
-      setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
-      alert('불사내용이 수정되었습니다.');
-      setShowBulsaEditPopup(false);
-      setEditingBulsaIndex(null);
-      setEditBulsaForm(emptyBulsa);
-      setEditBulsaPhotoFile(null);
-      setEditBulsaPhotoPreview(null);
-    } catch (error) {
-      alert('불사 수정 실패: ' + error.message);
     }
-  };
+    
+    const updatedBelievers = believers.map(b => {
+      if (b.id === selectedBeliever.id) {
+        const newBulsa = [...b.bulsa];
+        newBulsa[editingBulsaIndex] = { ...editBulsaForm, photoURLs: updatedPhotoURLs };
+        const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+        return { ...b, bulsa: newBulsa, unpaid };
+      }
+      return b;
+    });
+    setBelievers(updatedBelievers);
+    await saveBelievers(updatedBelievers);
+    setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
+    alert('불사내용이 수정되었습니다.');
+    setShowBulsaEditPopup(false);
+    setEditingBulsaIndex(null);
+    setEditBulsaForm(emptyBulsa);
+    setEditBulsaPhotoFiles([]);
+    setEditBulsaPhotoPreviews([]);
+  } catch (error) {
+    alert('불사 수정 실패: ' + error.message);
+  }
+};
 
   const openDepositPopup = (believer) => {
     setSelectedBeliever(believer);
@@ -750,7 +783,7 @@ export default function TempleManagementSystem() {
                 <input type="text" placeholder="이름, 전화번호, 불사내용으로 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
               </div>
               {userRole === 'admin' && (
-                <button onClick={() => { setShowAddForm(true); setFormData(emptyForm); setNewBulsaData(emptyBulsa); }} className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all shadow-md whitespace-nowrap text-sm sm:text-base">
+  <button onClick={() => { setShowAddForm(true); setFormData(emptyForm); setNewBulsaData(emptyBulsa); setPhotoFiles([]); setPhotoPreviews([]); }} className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all shadow-md whitespace-nowrap text-sm sm:text-base">
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                   신도 추가
                 </button>
@@ -902,13 +935,21 @@ export default function TempleManagementSystem() {
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl mb-8 overflow-y-auto max-h-[85vh] sm:max-h-[90vh]">
               <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
               
-              <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
-                  <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setPhotoFile, setPhotoPreview)} show={!photoPreview} />
-                </div>
+             <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
+  <div className="flex items-center justify-between mb-3 sm:mb-4">
+    <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
+    <PhotoUploadButtons 
+      onPhotoChange={(e) => handlePhotoChange(e, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews)} 
+      show={true} 
+      currentCount={photoPreviews.length}
+      maxCount={3}
+    />
+  </div>
 
-                <PhotoPreview src={photoPreview} onRemove={() => { setPhotoFile(null); setPhotoPreview(null); }} />
+  <MultiPhotoPreview 
+    photos={photoPreviews} 
+    onRemove={(index) => removePhoto(index, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews)} 
+  />
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
@@ -926,9 +967,9 @@ export default function TempleManagementSystem() {
                 <button onClick={handleAddBeliever} disabled={isUploading} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   {isUploading ? '업로드 중...' : '추가하기'}
                 </button>
-                <button onClick={() => { setShowAddForm(false); setPhotoFile(null); setPhotoPreview(null); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
-                  취소
-                </button>
+                <button onClick={() => { setShowAddForm(false); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
+  취소
+</button>
               </div>
             </div>
           </div>
@@ -949,47 +990,70 @@ export default function TempleManagementSystem() {
                 <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
                   <h3 className="font-bold text-amber-900 mb-3 text-sm sm:text-base">등록된 불사내용</h3>
                   {selectedBeliever.bulsa.map((b, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
-                      <div className="flex items-center gap-2 flex-1">
-                        {b.photoURL ? (
-                          <img src={b.photoURL} alt="불사 사진" onClick={() => { setViewPhotoUrl(b.photoURL); setViewPhotoModal(true); }} className="w-8 h-8 rounded object-cover border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-110 transition-transform flex-shrink-0" />
-                        ) : (
-                          <div className="w-8 h-8 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
-                            <span className="text-lg text-gray-400">📷</span>
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-                          <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
-                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
-                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
-                          {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
-                        </div>
-                      </div>
-                      {userRole === 'admin' && (
-                        <div className="flex gap-2">
-                          <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
-                          <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <div className="mt-3 pt-3 border-t-2 border-amber-300">
-                    <span className="font-bold text-amber-900 text-sm sm:text-base">총 불사금액: </span>
-                    <span className="font-bold text-blue-600 text-base sm:text-lg">{formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원</span>
-                  </div>
-                </div>
+  <div key={idx} className="mb-4 pb-4 border-b border-amber-200 last:border-0">
+    <div className="flex items-start justify-between mb-2">
+      <div className="flex-1">
+        {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
+        <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+        <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+        {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+      </div>
+      {userRole === 'admin' && (
+        <div className="flex gap-2">
+          <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
+          <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
+        </div>
+      )}
+    </div>
+    {b.photoURLs && b.photoURLs.length > 0 && (
+      <div className="grid grid-cols-3 gap-2 mt-2">
+        {b.photoURLs.map((photoURL, photoIdx) => (
+          <img 
+            key={photoIdx}
+            src={photoURL} 
+            alt={`불사 사진 ${photoIdx + 1}`} 
+            onClick={() => { setViewPhotoUrl(photoURL); setViewPhotoModal(true); }} 
+            className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+          />
+        ))}
+      </div>
+    )}
+    {b.photoURL && !b.photoURLs && (
+      <div className="mt-2">
+        <img 
+          src={b.photoURL} 
+          alt="불사 사진" 
+          onClick={() => { setViewPhotoUrl(b.photoURL); setViewPhotoModal(true); }} 
+          className="w-32 h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+        />
+      </div>
+    )}
+  </div>
+))}
+<div className="mt-3 pt-3 border-t-2 border-amber-300">
+  <span className="font-bold text-amber-900 text-sm sm:text-base">총 불사금액: </span>
+  <span className="font-bold text-blue-600 text-base sm:text-lg">{formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원</span>
+</div>
               )}
 
-              {userRole === 'admin' && (
-                <>
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
-                    <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setBulsaPhotoFile, setBulsaPhotoPreview)} show={!bulsaPhotoPreview} />
-                  </div>
+             {userRole === 'admin' && (
+  <>
+    <div className="flex items-center justify-between mb-3 sm:mb-4">
+      <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
+      <PhotoUploadButtons 
+        onPhotoChange={(e) => handlePhotoChange(e, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews)} 
+        show={true} 
+        currentCount={bulsaPhotoPreviews.length}
+        maxCount={3}
+      />
+    </div>
 
-                  <PhotoPreview src={bulsaPhotoPreview} onRemove={() => { setBulsaPhotoFile(null); setBulsaPhotoPreview(null); }} />
-                  <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
+    <MultiPhotoPreview 
+      photos={bulsaPhotoPreviews} 
+      onRemove={(index) => removePhoto(index, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews)} 
+    />
+    <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
 
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <button onClick={addBulsa} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all">추가하기</button>
@@ -1016,33 +1080,59 @@ export default function TempleManagementSystem() {
                 </button>
               </div>
 
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-amber-900 text-sm">사진</h3>
-                  <PhotoUploadButtons onPhotoChange={(e) => handlePhotoChange(e, setEditBulsaPhotoFile, setEditBulsaPhotoPreview)} show={!editBulsaPhotoPreview && !editBulsaForm.photoURL} />
-                </div>
+             <div className="mb-4">
+  <div className="flex items-center justify-between mb-3">
+    <h3 className="font-bold text-amber-900 text-sm">사진 ({(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}/3)</h3>
+    <PhotoUploadButtons 
+      onPhotoChange={(e) => handlePhotoChange(e, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews)} 
+      show={true} 
+      currentCount={(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}
+      maxCount={3}
+    />
+  </div>
 
-                {(editBulsaPhotoPreview || editBulsaForm.photoURL) && (
-                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                    <div className="relative">
-                      <img src={editBulsaPhotoPreview || editBulsaForm.photoURL} alt="불사 사진" className="w-full max-w-md mx-auto rounded-lg shadow-lg border-2 border-blue-300" />
-                      <button type="button" onClick={() => { setEditBulsaPhotoFile(null); setEditBulsaPhotoPreview(null); setEditBulsaForm({...editBulsaForm, photoURL: ''}); }} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-center text-xs text-gray-500 mt-2">
-                      {editBulsaPhotoPreview ? '새 사진 선택됨' : '기존 사진'} (×를 눌러 {editBulsaPhotoPreview ? '변경' : '삭제'})
-                    </p>
-                  </div>
-                )}
-              </div>
+  {/* 기존 사진들 */}
+  {editBulsaForm.photoURLs && editBulsaForm.photoURLs.length > 0 && (
+    <div className="mb-3">
+      <p className="text-xs text-gray-600 mb-2">기존 사진</p>
+      <div className="grid grid-cols-3 gap-2">
+        {editBulsaForm.photoURLs.map((url, index) => (
+          <div key={index} className="relative">
+            <img src={url} alt={`기존 사진 ${index + 1}`} className="w-full h-32 object-cover rounded-lg shadow-lg border-2 border-blue-300" />
+            <button 
+              type="button" 
+              onClick={() => {
+                const newURLs = editBulsaForm.photoURLs.filter((_, i) => i !== index);
+                setEditBulsaForm({...editBulsaForm, photoURLs: newURLs});
+              }} 
+              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
 
-              <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
+  {/* 새로 추가될 사진들 */}
+  {editBulsaPhotoPreviews.length > 0 && (
+    <div>
+      <p className="text-xs text-gray-600 mb-2">새로 추가할 사진</p>
+      <MultiPhotoPreview 
+        photos={editBulsaPhotoPreviews} 
+        onRemove={(index) => removePhoto(index, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews)} 
+      />
+    </div>
+  )}
+</div>
 
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
-                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFile(null); setEditBulsaPhotoPreview(null); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
-              </div>
+<BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
+
+<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+  <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
+  <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+</div>
             </div>
           </div>
         )}
