@@ -444,14 +444,16 @@ export default function TempleManagementSystem() {
       
       console.log(`원본: ${(file.size / 1024).toFixed(2)}KB → 압축: ${(compressedFile.size / 1024).toFixed(2)}KB → 썸네일: ${(thumbnailFile.size / 1024).toFixed(2)}KB`);
       
-      // 원본과 썸네일을 함께 저장
-      filesSetter([...currentFiles, { original: compressedFile, thumbnail: thumbnailFile }]);
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        previewsSetter([...currentPreviews, reader.result]);
-      };
-      reader.readAsDataURL(thumbnailFile);
+    // 미리보기 URL을 먼저 생성
+const reader = new FileReader();
+const previewUrl = await new Promise((resolve) => {
+  reader.onloadend = () => resolve(reader.result);
+  reader.readAsDataURL(thumbnailFile);
+});
+
+// 파일과 미리보기를 동시에 업데이트 (한 번만 렌더링)
+filesSetter([...currentFiles, { original: compressedFile, thumbnail: thumbnailFile }]);
+previewsSetter([...currentPreviews, previewUrl]);
     } catch (error) {
       console.error('이미지 처리 실패:', error);
       alert('이미지 처리에 실패했습니다.');
