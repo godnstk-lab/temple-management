@@ -1035,6 +1035,7 @@ const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPr
   <span className="font-bold text-amber-900 text-sm sm:text-base">총 불사금액: </span>
   <span className="font-bold text-blue-600 text-base sm:text-lg">{formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원</span>
 </div>
+</div>
               )}
 
              {userRole === 'admin' && (
