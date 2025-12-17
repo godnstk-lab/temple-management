@@ -125,6 +125,7 @@ export default function TempleManagementSystem() {
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [bulsaPhotoFiles, setBulsaPhotoFiles] = useState([]);
   const [bulsaPhotoPreviews, setBulsaPhotoPreviews] = useState([]);
   const [editBulsaPhotoFiles, setEditBulsaPhotoFiles] = useState([]);
@@ -364,7 +365,50 @@ export default function TempleManagementSystem() {
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   
-  const handlePhotoChange = (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+  // 이미지 압축 함수
+  const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // 비율 유지하며 크기 조정
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // JPEG로 압축 (quality: 0.8 = 80% 품질)
+          canvas.toBlob(
+            (blob) => {
+              resolve(new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              }));
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+  
+  const handlePhotoChange = async (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -382,13 +426,22 @@ export default function TempleManagementSystem() {
       return;
     }
     
-    filesSetter([...currentFiles, file]);
-    
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      previewsSetter([...currentPreviews, reader.result]);
-    };
-    reader.readAsDataURL(file);
+    try {
+      // 이미지 압축
+      const compressedFile = await compressImage(file);
+      console.log(`압축 전: ${(file.size / 1024).toFixed(2)}KB → 압축 후: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+      
+      filesSetter([...currentFiles, compressedFile]);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        previewsSetter([...currentPreviews, reader.result]);
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error('이미지 압축 실패:', error);
+      alert('이미지 처리에 실패했습니다.');
+    }
   };
 
   const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
@@ -402,12 +455,36 @@ export default function TempleManagementSystem() {
       const fileName = isBulsa ? `bulsa_${bulsaId}_${timestamp}.jpg` : `${timestamp}.jpg`;
       const path = isBulsa ? `believers/${believerId}/bulsa/${fileName}` : `believers/${believerId}/${fileName}`;
       const photoRef = storageRef(storage, path);
-      await uploadBytes(photoRef, file);
+      
+      // 메타데이터 설정으로 캐싱 최적화
+      const metadata = {
+        contentType: 'image/jpeg',
+        cacheControl: 'public, max-age=31536000', // 1년 캐싱
+      };
+      
+      await uploadBytes(photoRef, file, metadata);
       return await getDownloadURL(photoRef);
     } catch (error) {
       console.error('사진 업로드 실패:', error);
       throw error;
     }
+  };
+  
+  // 여러 사진을 병렬로 업로드
+  const uploadPhotosInParallel = async (files, believerId, isBulsa = false, bulsaId = null) => {
+    setUploadProgress(0);
+    let completedUploads = 0;
+    
+    const uploadPromises = files.map(async (file) => {
+      const result = await uploadPhoto(file, believerId, isBulsa, bulsaId);
+      completedUploads++;
+      setUploadProgress(Math.round((completedUploads / files.length) * 100));
+      return result;
+    });
+    
+    const results = await Promise.all(uploadPromises);
+    setUploadProgress(0);
+    return results;
   };
   
   const calcTotals = (bulsa, deposits) => {
@@ -446,10 +523,8 @@ export default function TempleManagementSystem() {
       if (newBulsaData.content && newBulsaData.amount) {
         let bulsaPhotoURLs = [];
         if (photoFiles.length > 0) {
-          for (const file of photoFiles) {
-            const url = await uploadPhoto(file, believerId);
-            bulsaPhotoURLs.push(url);
-          }
+          // 병렬 업로드로 속도 개선
+          bulsaPhotoURLs = await uploadPhotosInParallel(photoFiles, believerId);
         }
         bulsaArray = [{ ...newBulsaData, photoURLs: bulsaPhotoURLs }];
       }
@@ -526,10 +601,8 @@ export default function TempleManagementSystem() {
       let bulsaPhotoURLs = [];
       if (bulsaPhotoFiles.length > 0) {
         const bulsaId = Date.now().toString();
-        for (const file of bulsaPhotoFiles) {
-          const url = await uploadPhoto(file, selectedBeliever.id, true, bulsaId);
-          bulsaPhotoURLs.push(url);
-        }
+        // 병렬 업로드로 속도 개선
+        bulsaPhotoURLs = await uploadPhotosInParallel(bulsaPhotoFiles, selectedBeliever.id, true, bulsaId);
       }
       const updatedBelievers = believers.map(b => {
         if (b.id === selectedBeliever.id) {
@@ -584,10 +657,9 @@ export default function TempleManagementSystem() {
       
       if (editBulsaPhotoFiles.length > 0) {
         const bulsaId = Date.now().toString();
-        for (const file of editBulsaPhotoFiles) {
-          const url = await uploadPhoto(file, selectedBeliever.id, true, bulsaId);
-          updatedPhotoURLs.push(url);
-        }
+        // 병렬 업로드로 속도 개선
+        const newPhotoURLs = await uploadPhotosInParallel(editBulsaPhotoFiles, selectedBeliever.id, true, bulsaId);
+        updatedPhotoURLs = [...updatedPhotoURLs, ...newPhotoURLs];
       }
       
       const updatedBelievers = believers.map(b => {
@@ -957,9 +1029,14 @@ export default function TempleManagementSystem() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
                 <button onClick={handleAddBeliever} disabled={isUploading} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  {isUploading ? '업로드 중...' : '추가하기'}
+                  {isUploading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>업로드 중... {uploadProgress > 0 ? `${uploadProgress}%` : ''}</span>
+                    </div>
+                  ) : '추가하기'}
                 </button>
-                <button onClick={() => { setShowAddForm(false); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
+                <button onClick={() => { setShowAddForm(false); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold" disabled={isUploading}>
                   취소
                 </button>
               </div>
@@ -1006,7 +1083,9 @@ export default function TempleManagementSystem() {
                               src={photoURL} 
                               alt={`불사 사진 ${photoIdx + 1}`}
                               onClick={() => { setViewPhotoUrl(photoURL); setViewPhotoModal(true); }} 
-                              className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+                              className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ))}
                         </div>
@@ -1017,7 +1096,9 @@ export default function TempleManagementSystem() {
                             src={b.photoURL} 
                             alt="불사 사진" 
                             onClick={() => { setViewPhotoUrl(b.photoURL); setViewPhotoModal(true); }} 
-                            className="w-32 h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+                            className="w-32 h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                            loading="lazy"
+                            decoding="async"
                           />
                         </div>
                       )}
@@ -1295,4 +1376,4 @@ export default function TempleManagementSystem() {
       </div>
     </div>
   );
-            }
+                        }
