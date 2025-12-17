@@ -1007,18 +1007,18 @@ const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPr
       )}
     </div>
     {b.photoURLs && b.photoURLs.length > 0 && (
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        {b.photoURLs.map((photoURL, photoIdx) => (
-          <img 
-            key={photoIdx}
-            src={photoURL} 
-            alt={`불사 사진 ${photoIdx + 1}`} 
-            onClick={() => { setViewPhotoUrl(photoURL); setViewPhotoModal(true); }} 
-            className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
-          />
-        ))}
-      </div>
-    )}
+  <div className="grid grid-cols-3 gap-2 mt-2">
+    {b.photoURLs.map((photoURL, photoIdx) => (
+      <img 
+        key={photoIdx}
+        src={photoURL} 
+        alt={`불사 사진 ${photoIdx + 1}`}
+        onClick={() => { setViewPhotoUrl(photoURL); setViewPhotoModal(true); }} 
+        className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform" 
+      />
+    ))}
+  </div>
+)}
     {b.photoURL && !b.photoURLs && (
       <div className="mt-2">
         <img 
