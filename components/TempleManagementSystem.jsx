@@ -1434,4 +1434,4 @@ export default function TempleManagementSystem() {
       </div>
     </div>
   );
-                                            }
+}
