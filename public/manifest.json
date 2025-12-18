@@ -10,16 +10,22 @@
   "theme_color": "#D97706",
   "icons": [
     {
+<<<<<<< HEAD
       "src": "/icon-72.png",
       "sizes": "72x72",
+=======
+>>>>>>> caa3106a8ae5a2c197055351eee9f678b6b852b0
       "src": "https://em-content.zobj.net/source/apple/391/folded-hands_1f64f.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
+<<<<<<< HEAD
       "src": "/icon-384.png",
       "sizes": "384x384",
+=======
+>>>>>>> caa3106a8ae5a2c197055351eee9f678b6b852b0
       "src": "https://em-content.zobj.net/source/apple/391/folded-hands_1f64f.png",
       "sizes": "512x512",
       "type": "image/png",
