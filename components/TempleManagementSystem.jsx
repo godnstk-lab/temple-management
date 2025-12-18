@@ -136,6 +136,8 @@ export default function TempleManagementSystem() {
   const [deleteBulsaInfo, setDeleteBulsaInfo] = useState(null);
   const [showDepositDeleteConfirm, setShowDepositDeleteConfirm] = useState(false);
   const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
+  const [showMonthlyDepositPopup, setShowMonthlyDepositPopup] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
   
   // useMemo로 상수 최적화
   const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' }), []);
@@ -192,6 +194,11 @@ export default function TempleManagementSystem() {
       setDeleteDepositInfo(null);
       return true;
     }
+    if (showMonthlyDepositPopup) {
+      setShowMonthlyDepositPopup(false);
+      setSelectedMonth('');
+      return true;
+    }
     if (showBulsaEditPopup) {
       setShowBulsaEditPopup(false);
       setEditingBulsaIndex(null);
@@ -236,7 +243,7 @@ export default function TempleManagementSystem() {
     }
     return false;
   }, [
-    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm,
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup,
     showBulsaEditPopup, showBulsaPopup, showDepositPopup,
     showEditPopup, showDeletePopup, showAddForm,
     emptyBulsa, emptyDeposit, emptyForm,
@@ -261,7 +268,7 @@ export default function TempleManagementSystem() {
 
     const anyPopupOpen = showAddForm || showEditPopup || showDeletePopup || 
                          showBulsaPopup || showDepositPopup || showBulsaEditPopup || 
-                         viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm;
+                         viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm || showMonthlyDepositPopup;
 
     if (anyPopupOpen) {
       historyPushRef.current = true;
@@ -274,7 +281,7 @@ export default function TempleManagementSystem() {
   }, [
     isLoggedIn, showAddForm, showEditPopup, showDeletePopup,
     showBulsaPopup, showDepositPopup, showBulsaEditPopup,
-    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup
   ]);
 
   const handleInstallClick = async () => {
@@ -955,7 +962,16 @@ export default function TempleManagementSystem() {
           
           {filteredBelievers.length > 0 && (
             <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
-              <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3 sm:mb-4">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 sm:mb-4">
+                <h3 className="text-sm sm:text-lg font-bold text-amber-900">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
+                <button 
+                  onClick={() => setShowMonthlyDepositPopup(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition-all shadow-md text-sm whitespace-nowrap"
+                >
+                  <span>📅</span>
+                  <span>월별 입금내역</span>
+                </button>
+              </div>
               <div className="space-y-3">
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
                   <div className="flex items-center justify-between">
@@ -1425,6 +1441,141 @@ export default function TempleManagementSystem() {
               </button>
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
                 화면을 탭하면 닫힙니다
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 월별 입금내역 팝업 */}
+        {showMonthlyDepositPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-6xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">📅 월별 입금내역</h2>
+                <button onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              {/* 월 선택 */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-amber-900 mb-2">조회할 월 선택</label>
+                <input 
+                  type="month" 
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  max={new Date().toISOString().slice(0, 7)}
+                  className="w-full sm:w-auto px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              {selectedMonth && (() => {
+                // 선택된 월의 입금내역 필터링
+                const [year, month] = selectedMonth.split('-');
+                const monthlyDeposits = [];
+                
+                filteredBelievers.forEach(believer => {
+                  if (believer.deposits && believer.deposits.length > 0) {
+                    believer.deposits.forEach(deposit => {
+                      if (deposit.date.startsWith(selectedMonth)) {
+                        monthlyDeposits.push({
+                          ...deposit,
+                          believerName: believer.name,
+                          believerPhone: believer.phone,
+                          believerId: believer.id
+                        });
+                      }
+                    });
+                  }
+                });
+
+                // 날짜순 정렬
+                monthlyDeposits.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const totalAmount = monthlyDeposits.reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
+
+                return (
+                  <div>
+                    {/* 합계 표시 */}
+                    <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">💰</span>
+                          <div>
+                            <p className="text-sm text-gray-600">{year}년 {month}월</p>
+                            <p className="text-lg font-bold text-gray-800">총 입금액</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold text-green-600">
+                            {formatNumber(totalAmount)}
+                            <span className="text-base ml-1">{totalAmount >= 10000 ? '원' : '만원'}</span>
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">{monthlyDeposits.length}건</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {monthlyDeposits.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <p className="text-lg">해당 월의 입금내역이 없습니다.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-green-100 to-emerald-100 border-b-2 border-green-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">날짜</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">신도명</th>
+                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-800">입금액</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyDeposits.map((deposit, idx) => (
+                              <tr key={idx} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                                <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
+                                  {new Date(deposit.date).toLocaleDateString('ko-KR', { 
+                                    month: 'long', 
+                                    day: 'numeric',
+                                    weekday: 'short'
+                                  })}
+                                </td>
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">{deposit.believerName}</td>
+                                <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                                  {formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-green-50 border-t-2 border-green-300">
+                              <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-800">합계</td>
+                              <td className="px-4 py-4 text-right font-bold text-green-600 text-lg">
+                                {formatNumber(totalAmount)}{totalAmount >= 10000 ? '원' : '만원'}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {!selectedMonth && (
+                <div className="text-center py-12 text-gray-400">
+                  <span className="text-6xl mb-4 block">📅</span>
+                  <p className="text-lg">조회할 월을 선택해주세요</p>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }}
+                  className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold transition-colors"
+                >
+                  닫기
+                </button>
               </div>
             </div>
           </div>
