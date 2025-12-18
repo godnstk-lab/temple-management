@@ -286,13 +286,35 @@ export default function TempleManagementSystem() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      alert('📱 홈 화면에 추가하는 방법:\n\niPhone (Safari):\n1. 하단 공유 버튼 (□↑) 탭\n2. "홈 화면에 추가" 선택\n3. "추가" 탭\n\nAndroid (Chrome):\n1. 우측 상단 점 3개 (⋮) 탭\n2. "홈 화면에 추가" 선택\n3. "추가" 탭');
+      // iOS인지 확인
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+      
+      if (isInStandaloneMode) {
+        alert('이미 홈 화면에 추가되어 있습니다! ✅');
+        return;
+      }
+      
+      if (isIOS) {
+        alert('📱 아이폰 홈 화면에 추가하는 방법:\n\n1. 하단 공유 버튼 (□↑) 탭\n2. 아래로 스크롤\n3. "홈 화면에 추가" 선택\n4. "추가" 탭\n\n✨ 앱처럼 사용할 수 있습니다!');
+      } else {
+        alert('📱 안드로이드 홈 화면에 추가하는 방법:\n\n1. 우측 상단 점 3개 (⋮) 탭\n2. "홈 화면에 추가" 또는 "앱 설치" 선택\n3. "추가" 또는 "설치" 탭\n\n✨ 앱처럼 사용할 수 있습니다!');
+      }
       return;
     }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setShowInstallButton(false);
-    setDeferredPrompt(null);
+    
+    // Android Chrome - 자동 설치 프롬프트
+    try {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallButton(false);
+        alert('✅ 설치 완료!\n홈 화면에서 앱을 확인하세요.');
+      }
+      setDeferredPrompt(null);
+    } catch (error) {
+      console.error('설치 오류:', error);
+    }
   };
 
   const saveBelievers = async (newBelievers) => {
@@ -838,6 +860,19 @@ export default function TempleManagementSystem() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
               <span className="relative">입장하기</span>
             </button>
+            
+            {/* 앱 설치 안내 */}
+            {showInstallButton && (
+              <div className="text-center">
+                <button 
+                  onClick={handleInstallClick}
+                  className="inline-flex items-center gap-2 text-sm text-amber-700 hover:text-amber-900 font-semibold transition-colors"
+                >
+                  <span className="text-lg">📱</span>
+                  <span>앱으로 설치하고 편리하게 사용하세요</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
