@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue } from 'firebase/database';
@@ -19,8 +19,8 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const storage = getStorage(app);
 
-// 재사용 가능한 컴포넌트들
-const PhotoUploadButtons = ({ onPhotoChange, show, currentCount = 0, maxCount = 3 }) => {
+// 재사용 가능한 컴포넌트들 - React.memo로 최적화
+const PhotoUploadButtons = React.memo(({ onPhotoChange, show, currentCount = 0, maxCount = 3 }) => {
   if (!show || currentCount >= maxCount) return null;
   return (
     <div className="flex gap-2">
@@ -38,9 +38,9 @@ const PhotoUploadButtons = ({ onPhotoChange, show, currentCount = 0, maxCount = 
       </label>
     </div>
   );
-};
+});
 
-const MultiPhotoPreview = ({ photos, onRemove }) => {
+const MultiPhotoPreview = React.memo(({ photos, onRemove }) => {
   if (!photos || photos.length === 0) return null;
   return (
     <div className="mb-3 sm:mb-4 bg-amber-50 p-4 rounded-lg border-2 border-amber-200">
@@ -60,9 +60,9 @@ const MultiPhotoPreview = ({ photos, onRemove }) => {
       <p className="text-center text-xs text-gray-500 mt-2">사진 {photos.length}/3장 (×를 눌러 삭제)</p>
     </div>
   );
-};
+});
 
-const SizeSelector = ({ value, onChange }) => (
+const SizeSelector = React.memo(({ value, onChange }) => (
   <div>
     <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
     <div className="flex gap-2">
@@ -80,9 +80,9 @@ const SizeSelector = ({ value, onChange }) => (
       ))}
     </div>
   </div>
-);
+));
 
-const FormInput = ({ label, required, className = '', ...props }) => (
+const FormInput = React.memo(({ label, required, className = '', ...props }) => (
   <div className={className}>
     <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">
       {label} {required && '*'}
@@ -92,9 +92,9 @@ const FormInput = ({ label, required, className = '', ...props }) => (
       {...props}
     />
   </div>
-);
+));
 
-const BulsaFormFields = ({ form, setForm }) => (
+const BulsaFormFields = React.memo(({ form, setForm }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
     <FormInput label="불사내용" type="text" value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="예: 용두관음" />
     <FormInput label="불사금액 (만원)" type="number" value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} placeholder="0" />
@@ -104,7 +104,7 @@ const BulsaFormFields = ({ form, setForm }) => (
       <FormInput label="봉안위치" type="text" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} placeholder="예: 1층 동쪽" />
     </div>
   </div>
-);
+));
 
 export default function TempleManagementSystem() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -137,9 +137,10 @@ export default function TempleManagementSystem() {
   const [showDepositDeleteConfirm, setShowDepositDeleteConfirm] = useState(false);
   const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
   
-  const emptyForm = { name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' };
-  const emptyBulsa = { content: '', amount: '', person: '', size: '', location: '', photoURLs: [] };
-  const emptyDeposit = { date: '', amount: '' };
+  // useMemo로 상수 최적화
+  const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' }), []);
+  const emptyBulsa = useMemo(() => ({ content: '', amount: '', person: '', size: '', location: '', photoURLs: [] }), []);
+  const emptyDeposit = useMemo(() => ({ date: '', amount: '' }), []);
   
   const [formData, setFormData] = useState(emptyForm);
   const [newBulsaData, setNewBulsaData] = useState(emptyBulsa);
@@ -174,152 +175,107 @@ export default function TempleManagementSystem() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // ============================================
-  // 모바일 뒤로가기 버튼 처리
-  // ============================================
+  // 뒤로가기 처리 최적화
+  const closeCurrentPopup = useCallback(() => {
+    if (viewPhotoModal) {
+      setViewPhotoModal(false);
+      setViewPhotoUrl('');
+      return true;
+    }
+    if (showBulsaDeleteConfirm) {
+      setShowBulsaDeleteConfirm(false);
+      setDeleteBulsaInfo(null);
+      return true;
+    }
+    if (showDepositDeleteConfirm) {
+      setShowDepositDeleteConfirm(false);
+      setDeleteDepositInfo(null);
+      return true;
+    }
+    if (showBulsaEditPopup) {
+      setShowBulsaEditPopup(false);
+      setEditingBulsaIndex(null);
+      setEditBulsaForm(emptyBulsa);
+      editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
+      setEditBulsaPhotoFiles([]);
+      setEditBulsaPhotoPreviews([]);
+      return true;
+    }
+    if (showBulsaPopup) {
+      setShowBulsaPopup(false);
+      setBulsaForm(emptyBulsa);
+      bulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
+      setBulsaPhotoFiles([]);
+      setBulsaPhotoPreviews([]);
+      return true;
+    }
+    if (showDepositPopup) {
+      setShowDepositPopup(false);
+      setDepositForm(emptyDeposit);
+      return true;
+    }
+    if (showEditPopup) {
+      setShowEditPopup(false);
+      setSelectedBeliever(null);
+      setFormData(emptyForm);
+      return true;
+    }
+    if (showDeletePopup) {
+      setShowDeletePopup(false);
+      setSelectedBeliever(null);
+      return true;
+    }
+    if (showAddForm) {
+      setShowAddForm(false);
+      setFormData(emptyForm);
+      setNewBulsaData(emptyBulsa);
+      photoPreviews.forEach(url => URL.revokeObjectURL(url));
+      setPhotoFiles([]);
+      setPhotoPreviews([]);
+      return true;
+    }
+    return false;
+  }, [
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm,
+    showBulsaEditPopup, showBulsaPopup, showDepositPopup,
+    showEditPopup, showDeletePopup, showAddForm,
+    emptyBulsa, emptyDeposit, emptyForm,
+    editBulsaPhotoPreviews, bulsaPhotoPreviews, photoPreviews
+  ]);
+
   useEffect(() => {
     const handlePopState = () => {
-      // 로그인 화면에서는 뒤로가기 기본 동작 허용
-      if (!isLoggedIn) {
-        return;
-      }
-      
-      // 열려있는 팝업을 우선순위대로 닫기만 함 (히스토리 추가 없음)
-      if (viewPhotoModal) {
-        setViewPhotoModal(false);
-        setViewPhotoUrl('');
-        return;
-      }
-      
-      if (showBulsaDeleteConfirm) {
-        setShowBulsaDeleteConfirm(false);
-        setDeleteBulsaInfo(null);
-        return;
-      }
-      
-      if (showDepositDeleteConfirm) {
-        setShowDepositDeleteConfirm(false);
-        setDeleteDepositInfo(null);
-        return;
-      }
-      
-      if (showBulsaEditPopup) {
-        setShowBulsaEditPopup(false);
-        setEditingBulsaIndex(null);
-        setEditBulsaForm(emptyBulsa);
-        setEditBulsaPhotoFiles([]);
-        setEditBulsaPhotoPreviews([]);
-        return;
-      }
-
-      if (showBulsaPopup) {
-        setShowBulsaPopup(false);
-        setBulsaForm(emptyBulsa);
-        setBulsaPhotoFiles([]);
-        setBulsaPhotoPreviews([]);
-        return;
-      }
-      
-      if (showDepositPopup) {
-        setShowDepositPopup(false);
-        setDepositForm(emptyDeposit);
-        return;
-      }
-      
-      if (showEditPopup) {
-        setShowEditPopup(false);
-        setSelectedBeliever(null);
-        setFormData(emptyForm);
-        return;
-      }
-      
-      if (showDeletePopup) {
-        setShowDeletePopup(false);
-        setSelectedBeliever(null);
-        return;
-      }
-      
-      if (showAddForm) {
-        setShowAddForm(false);
-        setFormData(emptyForm);
-        setNewBulsaData(emptyBulsa);
-        setPhotoFiles([]);
-        setPhotoPreviews([]);
-        return;
-      }
+      if (!isLoggedIn) return;
+      closeCurrentPopup();
     };
 
     window.addEventListener('popstate', handlePopState);
-    
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [
-    isLoggedIn, 
-    showAddForm, 
-    showEditPopup, 
-    showDeletePopup, 
-    showBulsaPopup, 
-    showDepositPopup, 
-    showBulsaEditPopup, 
-    viewPhotoModal,
-    showBulsaDeleteConfirm,
-    showDepositDeleteConfirm
-  ]);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isLoggedIn, closeCurrentPopup]);
 
-  // 팝업이 열릴 때만 히스토리 추가 (닫힐 때는 추가 안 함)
-  const prevPopupStates = React.useRef({
-    showAddForm: false,
-    showEditPopup: false,
-    showDeletePopup: false,
-    showBulsaPopup: false,
-    showDepositPopup: false,
-    showBulsaEditPopup: false,
-    viewPhotoModal: false,
-    showBulsaDeleteConfirm: false,
-    showDepositDeleteConfirm: false
-  });
-
-  const isAddingHistory = React.useRef(false);
-
+  // 히스토리 관리 최적화
+  const historyPushRef = React.useRef(false);
+  
   useEffect(() => {
-    if (!isLoggedIn || isAddingHistory.current) return;
+    if (!isLoggedIn || historyPushRef.current) return;
 
-    // 각 팝업이 false → true로 바뀔 때만 히스토리 추가
-    let shouldAddHistory = false;
-    
-    if (!prevPopupStates.current.showAddForm && showAddForm) shouldAddHistory = true;
-    if (!prevPopupStates.current.showEditPopup && showEditPopup) shouldAddHistory = true;
-    if (!prevPopupStates.current.showDeletePopup && showDeletePopup) shouldAddHistory = true;
-    if (!prevPopupStates.current.showBulsaPopup && showBulsaPopup) shouldAddHistory = true;
-    if (!prevPopupStates.current.showDepositPopup && showDepositPopup) shouldAddHistory = true;
-    if (!prevPopupStates.current.showBulsaEditPopup && showBulsaEditPopup) shouldAddHistory = true;
-    if (!prevPopupStates.current.viewPhotoModal && viewPhotoModal) shouldAddHistory = true;
-    if (!prevPopupStates.current.showBulsaDeleteConfirm && showBulsaDeleteConfirm) shouldAddHistory = true;
-    if (!prevPopupStates.current.showDepositDeleteConfirm && showDepositDeleteConfirm) shouldAddHistory = true;
+    const anyPopupOpen = showAddForm || showEditPopup || showDeletePopup || 
+                         showBulsaPopup || showDepositPopup || showBulsaEditPopup || 
+                         viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm;
 
-    if (shouldAddHistory) {
-      isAddingHistory.current = true;
+    if (anyPopupOpen) {
+      historyPushRef.current = true;
       window.history.pushState(null, '', window.location.href);
-      // 100ms 후 플래그 해제 (중복 히스토리 추가 방지)
+      
       setTimeout(() => {
-        isAddingHistory.current = false;
+        historyPushRef.current = false;
       }, 100);
     }
-
-    // 현재 상태를 이전 상태로 저장
-    prevPopupStates.current = {
-      showAddForm,
-      showEditPopup,
-      showDeletePopup,
-      showBulsaPopup,
-      showDepositPopup,
-      showBulsaEditPopup,
-      viewPhotoModal,
-      showBulsaDeleteConfirm,
-      showDepositDeleteConfirm
-    };
-  }, [isLoggedIn, showAddForm, showEditPopup, showDeletePopup, showBulsaPopup, showDepositPopup, showBulsaEditPopup, viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm]);
+  }, [
+    isLoggedIn, showAddForm, showEditPopup, showDeletePopup,
+    showBulsaPopup, showDepositPopup, showBulsaEditPopup,
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm
+  ]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -363,10 +319,12 @@ export default function TempleManagementSystem() {
     setShowAddForm(false);
   };
 
-  const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleInputChange = useCallback((e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
   
-  // 이미지 압축 함수 (원본)
-  const compressImage = (file, maxWidth = 1200, quality = 0.8) => {
+  // 이미지 압축 함수 - useCallback으로 최적화
+  const compressImage = useCallback((file, maxWidth = 1200, quality = 0.8) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -378,7 +336,6 @@ export default function TempleManagementSystem() {
           let width = img.width;
           let height = img.height;
 
-          // 비율 유지하며 크기 조정
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
             width = maxWidth;
@@ -390,7 +347,6 @@ export default function TempleManagementSystem() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // JPEG로 압축 (quality: 0.8 = 80% 품질)
           canvas.toBlob(
             (blob) => {
               resolve(new File([blob], file.name, {
@@ -406,19 +362,18 @@ export default function TempleManagementSystem() {
       };
       reader.onerror = reject;
     });
-  };
+  }, []);
 
-  // 썸네일 생성 함수 (작은 크기 - 목록용)
-  const createThumbnail = (file) => {
-    return compressImage(file, 300, 0.6); // 300px, 60% 품질
-  };
+  const createThumbnail = useCallback((file) => {
+    return compressImage(file, 300, 0.6);
+  }, [compressImage]);
   
-  // 원본 생성 함수 (큰 크기 - 전체화면용)
-  const createOriginal = (file) => {
-    return compressImage(file, 1920, 0.85); // 1920px, 85% 품질
-  };
+  const createOriginal = useCallback((file) => {
+    return compressImage(file, 1920, 0.85);
+  }, [compressImage]);
   
-  const handlePhotoChange = async (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+  // 사진 처리 최적화 - 깜빡임 제거
+  const handlePhotoChange = useCallback(async (e, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -437,32 +392,36 @@ export default function TempleManagementSystem() {
     }
     
     try {
-      // 원본 이미지 압축 (1920px로 증가)
-      const compressedFile = await createOriginal(file);
-      // 썸네일 생성 (300px로 축소)
-      const thumbnailFile = await createThumbnail(file);
+      // 병렬 처리로 속도 향상
+      const [compressedFile, thumbnailFile] = await Promise.all([
+        createOriginal(file),
+        createThumbnail(file)
+      ]);
       
       console.log(`원본: ${(file.size / 1024).toFixed(2)}KB → 압축: ${(compressedFile.size / 1024).toFixed(2)}KB → 썸네일: ${(thumbnailFile.size / 1024).toFixed(2)}KB`);
       
-      // 원본과 썸네일을 함께 저장
-      filesSetter([...currentFiles, { original: compressedFile, thumbnail: thumbnailFile }]);
+      // URL.createObjectURL 사용 (즉시 표시, 깜빡임 없음)
+      const previewUrl = URL.createObjectURL(thumbnailFile);
       
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        previewsSetter([...currentPreviews, reader.result]);
-      };
-      reader.readAsDataURL(thumbnailFile);
+      // 상태를 한 번에 업데이트 (깜빡임 방지)
+      filesSetter([...currentFiles, { original: compressedFile, thumbnail: thumbnailFile }]);
+      previewsSetter([...currentPreviews, previewUrl]);
+      
     } catch (error) {
       console.error('이미지 처리 실패:', error);
       alert('이미지 처리에 실패했습니다.');
     }
-  };
+  }, [createOriginal, createThumbnail]);
 
-  const removePhoto = (index, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+  const removePhoto = useCallback((index, filesSetter, previewsSetter, currentFiles, currentPreviews) => {
+    // URL 메모리 해제
+    if (currentPreviews[index]) {
+      URL.revokeObjectURL(currentPreviews[index]);
+    }
+    
     filesSetter(currentFiles.filter((_, i) => i !== index));
     previewsSetter(currentPreviews.filter((_, i) => i !== index));
-  };
-
+  }, []);
   const uploadPhoto = async (file, believerId, isBulsa = false, bulsaId = null, isThumbnail = false) => {
     try {
       const timestamp = Date.now();
@@ -471,10 +430,9 @@ export default function TempleManagementSystem() {
       const path = isBulsa ? `believers/${believerId}/bulsa/${fileName}` : `believers/${believerId}/${fileName}`;
       const photoRef = storageRef(storage, path);
       
-      // 메타데이터 설정으로 캐싱 최적화
       const metadata = {
         contentType: 'image/jpeg',
-        cacheControl: 'public, max-age=31536000', // 1년 캐싱
+        cacheControl: 'public, max-age=31536000',
       };
       
       await uploadBytes(photoRef, file, metadata);
@@ -485,19 +443,16 @@ export default function TempleManagementSystem() {
     }
   };
   
-  // 여러 사진을 병렬로 업로드 (썸네일 + 원본)
   const uploadPhotosInParallel = async (files, believerId, isBulsa = false, bulsaId = null) => {
     setUploadProgress(0);
     let completedUploads = 0;
-    const totalFiles = files.length * 2; // 썸네일 + 원본
+    const totalFiles = files.length * 2;
     
     const uploadPromises = files.map(async (fileObj) => {
-      // 썸네일 업로드
       const thumbnailURL = await uploadPhoto(fileObj.thumbnail, believerId, isBulsa, bulsaId, true);
       completedUploads++;
       setUploadProgress(Math.round((completedUploads / totalFiles) * 100));
       
-      // 원본 업로드
       const originalURL = await uploadPhoto(fileObj.original, believerId, isBulsa, bulsaId, false);
       completedUploads++;
       setUploadProgress(Math.round((completedUploads / totalFiles) * 100));
@@ -510,13 +465,13 @@ export default function TempleManagementSystem() {
     return results;
   };
   
-  const calcTotals = (bulsa, deposits) => {
+  const calcTotals = useCallback((bulsa, deposits) => {
     const totalBulsa = (bulsa || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
     const totalDeposit = (deposits || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
     return { totalBulsa, totalDeposit, unpaid: String(totalBulsa - totalDeposit) };
-  };
+  }, []);
   
-  const formatNumber = (num) => {
+  const formatNumber = useCallback((num) => {
     if (!num) return '0';
     const value = parseInt(num);
     if (value >= 10000) {
@@ -528,10 +483,10 @@ export default function TempleManagementSystem() {
       return `${eok}억${man.toLocaleString()}`;
     }
     return value.toLocaleString();
-  };
+  }, []);
   
-  const getTotalBulsaAmount = (bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
-  const getTotalDepositAmount = (deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
+  const getTotalBulsaAmount = useCallback((bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0), []);
+  const getTotalDepositAmount = useCallback((deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0), []);
 
   const handleAddBeliever = async () => {
     if (!formData.name || !formData.phone) {
@@ -546,7 +501,6 @@ export default function TempleManagementSystem() {
       if (newBulsaData.content && newBulsaData.amount) {
         let bulsaPhotoURLs = [];
         if (photoFiles.length > 0) {
-          // 병렬 업로드로 속도 개선
           bulsaPhotoURLs = await uploadPhotosInParallel(photoFiles, believerId);
         }
         bulsaArray = [{ ...newBulsaData, photoURLs: bulsaPhotoURLs }];
@@ -559,6 +513,10 @@ export default function TempleManagementSystem() {
       setBelievers(updatedBelievers);
       await saveBelievers(updatedBelievers);
       alert('새 신도가 추가되었습니다.');
+      
+      // URL 메모리 해제
+      photoPreviews.forEach(url => URL.revokeObjectURL(url));
+      
       setFormData(emptyForm);
       setNewBulsaData(emptyBulsa);
       setPhotoFiles([]);
@@ -571,11 +529,11 @@ export default function TempleManagementSystem() {
     }
   };
 
-  const handleEdit = (believer) => {
+  const handleEdit = useCallback((believer) => {
     setSelectedBeliever(believer);
     setFormData({ ...believer, bulsa: believer.bulsa || [], deposits: believer.deposits || [], unpaid: believer.unpaid || '' });
     setShowEditPopup(true);
-  };
+  }, []);
 
   const confirmEdit = () => {
     if (!formData.name || !formData.phone) {
@@ -593,10 +551,10 @@ export default function TempleManagementSystem() {
     setFormData(emptyForm);
   };
 
-  const handleDelete = (believer) => {
+  const handleDelete = useCallback((believer) => {
     setSelectedBeliever(believer);
     setShowDeletePopup(true);
-  };
+  }, []);
 
   const confirmDelete = () => {
     const updatedBelievers = believers.filter(b => b.id !== selectedBeliever.id);
@@ -607,13 +565,13 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(null);
   };
 
-  const openBulsaPopup = (believer) => {
+  const openBulsaPopup = useCallback((believer) => {
     setSelectedBeliever(believer);
     setBulsaForm(emptyBulsa);
     setBulsaPhotoFiles([]);
     setBulsaPhotoPreviews([]);
     setShowBulsaPopup(true);
-  };
+  }, [emptyBulsa]);
 
   const addBulsa = async () => {
     if (!bulsaForm.content || !bulsaForm.amount) {
@@ -624,7 +582,6 @@ export default function TempleManagementSystem() {
       let bulsaPhotoURLs = [];
       if (bulsaPhotoFiles.length > 0) {
         const bulsaId = Date.now().toString();
-        // 병렬 업로드로 속도 개선
         bulsaPhotoURLs = await uploadPhotosInParallel(bulsaPhotoFiles, selectedBeliever.id, true, bulsaId);
       }
       const updatedBelievers = believers.map(b => {
@@ -639,6 +596,10 @@ export default function TempleManagementSystem() {
       await saveBelievers(updatedBelievers);
       setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
       alert('불사내용이 추가되었습니다.');
+      
+      // URL 메모리 해제
+      bulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
+      
       setBulsaForm(emptyBulsa);
       setBulsaPhotoFiles([]);
       setBulsaPhotoPreviews([]);
@@ -680,7 +641,6 @@ export default function TempleManagementSystem() {
       
       if (editBulsaPhotoFiles.length > 0) {
         const bulsaId = Date.now().toString();
-        // 병렬 업로드로 속도 개선
         const newPhotoURLs = await uploadPhotosInParallel(editBulsaPhotoFiles, selectedBeliever.id, true, bulsaId);
         updatedPhotoURLs = [...updatedPhotoURLs, ...newPhotoURLs];
       }
@@ -698,6 +658,10 @@ export default function TempleManagementSystem() {
       await saveBelievers(updatedBelievers);
       setSelectedBeliever(updatedBelievers.find(b => b.id === selectedBeliever.id));
       alert('불사내용이 수정되었습니다.');
+      
+      // URL 메모리 해제
+      editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
+      
       setShowBulsaEditPopup(false);
       setEditingBulsaIndex(null);
       setEditBulsaForm(emptyBulsa);
@@ -708,11 +672,11 @@ export default function TempleManagementSystem() {
     }
   };
 
-  const openDepositPopup = (believer) => {
+  const openDepositPopup = useCallback((believer) => {
     setSelectedBeliever(believer);
     setDepositForm(emptyDeposit);
     setShowDepositPopup(true);
-  };
+  }, [emptyDeposit]);
 
   const addDeposit = () => {
     if (!depositForm.date || !depositForm.amount) {
@@ -748,46 +712,80 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  const filteredBelievers = believers.filter(b => {
-    if (!searchTerm) return true;
-    const searchParts = searchTerm.trim().split(/\s+/);
-    const sizeKeywords = [];
-    let textSearchParts = [];
-    searchParts.forEach(part => {
-      const lowerPart = part.toLowerCase();
-      if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
-        sizeKeywords.push(part);
-      } else {
-        textSearchParts.push(part);
+  const filteredBelievers = useMemo(() => {
+    return believers.filter(b => {
+      if (!searchTerm) return true;
+      const searchParts = searchTerm.trim().split(/\s+/);
+      const sizeKeywords = [];
+      let textSearchParts = [];
+      searchParts.forEach(part => {
+        const lowerPart = part.toLowerCase();
+        if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+          sizeKeywords.push(part);
+        } else {
+          textSearchParts.push(part);
+        }
+      });
+      const allTextMatches = textSearchParts.every(searchWord => {
+        const lowerSearchWord = searchWord.toLowerCase();
+        const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
+        const phoneMatch = (b.phone || '').includes(searchWord);
+        const bulsaContentMatch = (b.bulsa || []).some(item => 
+          (item.content || '').toLowerCase().includes(lowerSearchWord)
+        );
+        return nameMatch || phoneMatch || bulsaContentMatch;
+      });
+      if (sizeKeywords.length === 0) {
+        return allTextMatches;
       }
+      const hasBulsaWithSize = (b.bulsa || []).some(item => sizeKeywords.includes(item.size));
+      return allTextMatches && hasBulsaWithSize;
     });
-    const allTextMatches = textSearchParts.every(searchWord => {
-      const lowerSearchWord = searchWord.toLowerCase();
-      const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
-      const phoneMatch = (b.phone || '').includes(searchWord);
-      const bulsaContentMatch = (b.bulsa || []).some(item => 
-        (item.content || '').toLowerCase().includes(lowerSearchWord)
-      );
-      return nameMatch || phoneMatch || bulsaContentMatch;
-    });
-    if (sizeKeywords.length === 0) {
-      return allTextMatches;
-    }
-    const hasBulsaWithSize = (b.bulsa || []).some(item => sizeKeywords.includes(item.size));
-    return allTextMatches && hasBulsaWithSize;
-  });
+  }, [believers, searchTerm]);
 
-  const searchTotals = filteredBelievers.reduce((totals, believer) => {
-    const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
-    const depositTotal = getTotalDepositAmount(believer.deposits || []);
-    const unpaidTotal = parseInt(believer.unpaid || 0);
-    return {
-      totalBulsa: totals.totalBulsa + bulsaTotal,
-      totalDeposit: totals.totalDeposit + depositTotal,
-      totalUnpaid: totals.totalUnpaid + unpaidTotal
-    };
-  }, { totalBulsa: 0, totalDeposit: 0, totalUnpaid: 0 });
+  const searchTotals = useMemo(() => {
+    return filteredBelievers.reduce((totals, believer) => {
+      const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
+      const depositTotal = getTotalDepositAmount(believer.deposits || []);
+      const unpaidTotal = parseInt(believer.unpaid || 0);
+      return {
+        totalBulsa: totals.totalBulsa + bulsaTotal,
+        totalDeposit: totals.totalDeposit + depositTotal,
+        totalUnpaid: totals.totalUnpaid + unpaidTotal
+      };
+    }, { totalBulsa: 0, totalDeposit: 0, totalUnpaid: 0 });
+  }, [filteredBelievers, getTotalBulsaAmount, getTotalDepositAmount]);
 
+  // 메모이제이션된 콜백들
+  const memoizedHandlePhotoChange = useCallback((e) => 
+    handlePhotoChange(e, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews),
+    [handlePhotoChange, photoFiles, photoPreviews]
+  );
+
+  const memoizedRemovePhoto = useCallback((index) => 
+    removePhoto(index, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews),
+    [removePhoto, photoFiles, photoPreviews]
+  );
+
+  const memoizedHandleBulsaPhotoChange = useCallback((e) => 
+    handlePhotoChange(e, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews),
+    [handlePhotoChange, bulsaPhotoFiles, bulsaPhotoPreviews]
+  );
+
+  const memoizedRemoveBulsaPhoto = useCallback((index) => 
+    removePhoto(index, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews),
+    [removePhoto, bulsaPhotoFiles, bulsaPhotoPreviews]
+  );
+
+  const memoizedHandleEditBulsaPhotoChange = useCallback((e) => 
+    handlePhotoChange(e, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews),
+    [handlePhotoChange, editBulsaPhotoFiles, editBulsaPhotoPreviews]
+  );
+
+  const memoizedRemoveEditBulsaPhoto = useCallback((index) => 
+    removePhoto(index, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews),
+    [removePhoto, editBulsaPhotoFiles, editBulsaPhotoPreviews]
+  );
   if (!isLoggedIn) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
@@ -1026,7 +1024,7 @@ export default function TempleManagementSystem() {
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
                   <PhotoUploadButtons 
-                    onPhotoChange={(e) => handlePhotoChange(e, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews)} 
+                    onPhotoChange={memoizedHandlePhotoChange}
                     show={true} 
                     currentCount={photoPreviews.length}
                     maxCount={3}
@@ -1035,13 +1033,13 @@ export default function TempleManagementSystem() {
 
                 <MultiPhotoPreview 
                   photos={photoPreviews} 
-                  onRemove={(index) => removePhoto(index, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews)} 
+                  onRemove={memoizedRemovePhoto}
                 />
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                   <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
                   <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="address"]').focus(); }}} />
-                  <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[placeholder="예: 용두관음"]').focus(); }}} />
+                  <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); const target = document.querySelector('input[placeholder="예: 용두관음"]'); if (target) target.focus(); }}} />
                 </div>
               </div>
 
@@ -1059,7 +1057,7 @@ export default function TempleManagementSystem() {
                     </div>
                   ) : '추가하기'}
                 </button>
-                <button onClick={() => { setShowAddForm(false); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold" disabled={isUploading}>
+                <button onClick={() => { setShowAddForm(false); photoPreviews.forEach(url => URL.revokeObjectURL(url)); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold" disabled={isUploading}>
                   취소
                 </button>
               </div>
@@ -1101,7 +1099,6 @@ export default function TempleManagementSystem() {
                       {b.photoURLs && b.photoURLs.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-2">
                           {b.photoURLs.map((photoData, photoIdx) => {
-                            // 새 형식 (썸네일 + 원본) 또는 구 형식 (URL만) 지원
                             const thumbnailUrl = typeof photoData === 'object' ? photoData.thumbnail : photoData;
                             const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
                             
@@ -1145,7 +1142,7 @@ export default function TempleManagementSystem() {
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
                     <PhotoUploadButtons 
-                      onPhotoChange={(e) => handlePhotoChange(e, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews)} 
+                      onPhotoChange={memoizedHandleBulsaPhotoChange}
                       show={true} 
                       currentCount={bulsaPhotoPreviews.length}
                       maxCount={3}
@@ -1154,7 +1151,7 @@ export default function TempleManagementSystem() {
 
                   <MultiPhotoPreview 
                     photos={bulsaPhotoPreviews} 
-                    onRemove={(index) => removePhoto(index, setBulsaPhotoFiles, setBulsaPhotoPreviews, bulsaPhotoFiles, bulsaPhotoPreviews)} 
+                    onRemove={memoizedRemoveBulsaPhoto}
                   />
                   <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
 
@@ -1178,7 +1175,7 @@ export default function TempleManagementSystem() {
             <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
-                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="text-gray-500 hover:text-gray-700">
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="text-gray-500 hover:text-gray-700">
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
@@ -1187,44 +1184,45 @@ export default function TempleManagementSystem() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-amber-900 text-sm">사진 ({(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}/3)</h3>
                   <PhotoUploadButtons 
-                    onPhotoChange={(e) => handlePhotoChange(e, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews)} 
+                    onPhotoChange={memoizedHandleEditBulsaPhotoChange}
                     show={true} 
                     currentCount={(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}
                     maxCount={3}
                   />
                 </div>
 
-                {/* 기존 사진들 */}
                 {editBulsaForm.photoURLs && editBulsaForm.photoURLs.length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs text-gray-600 mb-2">기존 사진</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {editBulsaForm.photoURLs.map((url, index) => (
-                        <div key={index} className="relative">
-                          <img src={url} alt={`기존 사진 ${index + 1}`} className="w-full h-32 object-cover rounded-lg shadow-lg border-2 border-blue-300" />
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              const newURLs = editBulsaForm.photoURLs.filter((_, i) => i !== index);
-                              setEditBulsaForm({...editBulsaForm, photoURLs: newURLs});
-                            }} 
-                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
+                      {editBulsaForm.photoURLs.map((photoData, index) => {
+                        const url = typeof photoData === 'object' ? photoData.thumbnail : photoData;
+                        return (
+                          <div key={index} className="relative">
+                            <img src={url} alt={`기존 사진 ${index + 1}`} className="w-full h-32 object-cover rounded-lg shadow-lg border-2 border-blue-300" />
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const newURLs = editBulsaForm.photoURLs.filter((_, i) => i !== index);
+                                setEditBulsaForm({...editBulsaForm, photoURLs: newURLs});
+                              }} 
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {/* 새로 추가될 사진들 */}
                 {editBulsaPhotoPreviews.length > 0 && (
                   <div>
                     <p className="text-xs text-gray-600 mb-2">새로 추가할 사진</p>
                     <MultiPhotoPreview 
                       photos={editBulsaPhotoPreviews} 
-                      onRemove={(index) => removePhoto(index, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews)} 
+                      onRemove={memoizedRemoveEditBulsaPhoto}
                     />
                   </div>
                 )}
@@ -1234,7 +1232,7 @@ export default function TempleManagementSystem() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
-                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
               </div>
             </div>
           </div>
@@ -1391,7 +1389,7 @@ export default function TempleManagementSystem() {
           </div>
         )}
 
-        {/* 사진 크게 보기 모달 - 전체화면 최적화 */}
+        {/* 사진 크게 보기 모달 */}
         {viewPhotoModal && (
           <div 
             className="fixed inset-0 bg-black z-50 flex items-center justify-center" 
