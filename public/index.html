@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#D97706">
+  <meta name="description" content="해운사 신도 관리 시스템">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="해운사">
+  
+  <!-- PWA 필수 설정 -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  
+  <title>해운사 신도관리 시스템</title>
+</head>
+<body>
+  <noscript>JavaScript를 활성화해주세요.</noscript>
+  <div id="root"></div>
+  
+  <!-- Service Worker 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('✅ Service Worker 등록 성공:', registration.scope);
+          })
+          .catch(error => {
+            console.error('❌ Service Worker 등록 실패:', error);
+          });
+      });
+    } else {
+      console.warn('⚠️ 이 브라우저는 Service Worker를 지원하지 않습니다.');
+    }
+  </script>
+</body>
+</html>
