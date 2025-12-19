@@ -93,7 +93,20 @@ const FormInput = React.memo(({ label, required, className = '', ...props }) => 
     />
   </div>
 ));
-
+const SortButton = React.memo(({ column, label, currentSort, currentOrder, onSort }) => {
+  const isActive = currentSort === column;
+  return (
+    <button
+      onClick={() => onSort(column)}
+      className="flex items-center gap-1 hover:text-amber-700 transition-colors"
+    >
+      {label}
+      <span className="text-xs">
+        {isActive ? (currentOrder === 'asc' ? '▲' : '▼') : '⇅'}
+      </span>
+    </button>
+  );
+});
 const BulsaFormFields = React.memo(({ form, setForm }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
     <FormInput label="불사내용" type="text" value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="예: 용두관음" />
@@ -138,6 +151,8 @@ export default function TempleManagementSystem() {
   const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
   const [showMonthlyDepositPopup, setShowMonthlyDepositPopup] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+const [sortOrder, setSortOrder] = useState('asc');
   
   // useMemo로 상수 최적화
   const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' }), []);
@@ -771,6 +786,37 @@ export default function TempleManagementSystem() {
       return allTextMatches && hasBulsaWithSize;
     });
   }, [believers, searchTerm]);
+  const sortedBelievers = useMemo(() => {
+    const sorted = [...filteredBelievers];
+    
+    sorted.sort((a, b) => {
+      let valueA, valueB;
+      
+      switch(sortBy) {
+        case 'bulsa':
+          valueA = getTotalBulsaAmount(a.bulsa || []);
+          valueB = getTotalBulsaAmount(b.bulsa || []);
+          break;
+        case 'deposit':
+          valueA = getTotalDepositAmount(a.deposits || []);
+          valueB = getTotalDepositAmount(b.deposits || []);
+          break;
+        case 'unpaid':
+          valueA = parseInt(a.unpaid || 0);
+          valueB = parseInt(b.unpaid || 0);
+          break;
+        case 'name':
+        default:
+          return sortOrder === 'asc' 
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name);
+      }
+      
+      return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
+    });
+    
+    return sorted;
+  }, [filteredBelievers, sortBy, sortOrder, getTotalBulsaAmount, getTotalDepositAmount]);
 
   const searchTotals = useMemo(() => {
     return filteredBelievers.reduce((totals, believer) => {
@@ -924,7 +970,16 @@ export default function TempleManagementSystem() {
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-amber-200">
-            <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 목록 ({filteredBelievers.length}명)</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">
+  신도 목록 ({filteredBelievers.length}명)
+  <span className="text-sm sm:text-base font-normal text-gray-600 ml-3">
+    {sortBy === 'name' && '이름순'}
+    {sortBy === 'bulsa' && '불사금액순'}
+    {sortBy === 'deposit' && '입금액순'}
+    {sortBy === 'unpaid' && '미수금순'}
+    {' '}{sortOrder === 'asc' ? '▲' : '▼'}
+  </span>
+</h2>
 
             {filteredBelievers.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-amber-700">
@@ -934,19 +989,79 @@ export default function TempleManagementSystem() {
               <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">이름</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">불사내용</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">입금액</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">미수금</th>
-                        {userRole === 'admin' && (
-                          <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
-                        )}
-                      </tr>
-                    </thead>
+                   <thead>
+  <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
+    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+      <SortButton 
+        column="name" 
+        label="이름" 
+        currentSort={sortBy} 
+        currentOrder={sortOrder}
+        onSort={(col) => {
+          if (sortBy === col) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortBy(col);
+            setSortOrder('asc');
+          }
+        }}
+      />
+    </th>
+    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+      <SortButton 
+        column="bulsa" 
+        label="불사내용" 
+        currentSort={sortBy} 
+        currentOrder={sortOrder}
+        onSort={(col) => {
+          if (sortBy === col) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortBy(col);
+            setSortOrder('desc');
+          }
+        }}
+      />
+    </th>
+    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+      <SortButton 
+        column="deposit" 
+        label="입금액" 
+        currentSort={sortBy} 
+        currentOrder={sortOrder}
+        onSort={(col) => {
+          if (sortBy === col) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortBy(col);
+            setSortOrder('desc');
+          }
+        }}
+      />
+    </th>
+    <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+      <SortButton 
+        column="unpaid" 
+        label="미수금" 
+        currentSort={sortBy} 
+        currentOrder={sortOrder}
+        onSort={(col) => {
+          if (sortBy === col) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortBy(col);
+            setSortOrder('desc');
+          }
+        }}
+      />
+    </th>
+    {userRole === 'admin' && (
+      <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
+    )}
+  </tr>
+</thead>
                     <tbody>
-                      {filteredBelievers.map((believer) => (
+                      {sortedBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
                             {userRole === 'admin' ? (
