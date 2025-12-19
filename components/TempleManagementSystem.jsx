@@ -358,10 +358,10 @@ const [sortOrder, setSortOrder] = useState('asc');
   };
 
   const handleLogin = () => {
-    if (loginPassword === '1023') {
+    if (loginPassword === '0804') {
       setIsLoggedIn(true);
       setUserRole('admin');
-    } else if (loginPassword === '0804') {
+    } else if (loginPassword === '1023') {
       setIsLoggedIn(true);
       setUserRole('user');
     } else {
