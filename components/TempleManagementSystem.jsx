@@ -815,6 +815,11 @@ export default function TempleManagementSystem() {
     removePhoto(index, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews),
     [removePhoto, editBulsaPhotoFiles, editBulsaPhotoPreviews]
   );
+  // 입금내역을 날짜순으로 정렬하는 함수
+  const getSortedDeposits = useCallback((deposits) => {
+    if (!deposits || deposits.length === 0) return [];
+    return [...deposits].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, []);
   if (!isLoggedIn) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
@@ -1302,18 +1307,23 @@ export default function TempleManagementSystem() {
 
               {selectedBeliever.deposits && selectedBeliever.deposits.length > 0 && (
                 <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                  <h3 className="font-bold text-green-900 mb-3">등록된 입금내역</h3>
-                  {selectedBeliever.deposits.map((d, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-2 border-b border-green-200 last:border-0">
-                      <div className="flex-1">
-                        <span className="font-semibold text-gray-800">{d.date}</span>
-                        <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
+                  <h3 className="font-bold text-green-900 mb-3">등록된 입금내역 (날짜순)</h3>
+                  {getSortedDeposits(selectedBeliever.deposits).map((d, idx) => {
+                    const originalIndex = selectedBeliever.deposits.findIndex(
+                      deposit => deposit.date === d.date && deposit.amount === d.amount
+                    );
+                    return (
+                      <div key={idx} className="flex justify-between items-center py-2 border-b border-green-200 last:border-0">
+                        <div className="flex-1">
+                          <span className="font-semibold text-gray-800">{d.date}</span>
+                          <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
+                        </div>
+                        {userRole === 'admin' && (
+                          <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index: originalIndex, date: d.date, amount: d.amount }); setShowDepositDeleteConfirm(true); }} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
+                        )}
                       </div>
-                      {userRole === 'admin' && (
-                        <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index: idx, date: d.date, amount: d.amount }); setShowDepositDeleteConfirm(true); }} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div className="mt-3 pt-3 border-t-2 border-green-300">
                     <span className="font-bold text-green-900">총 입금액: </span>
                     <span className="font-bold text-green-600 text-lg">{formatNumber(getTotalDepositAmount(selectedBeliever.deposits))}만원</span>
