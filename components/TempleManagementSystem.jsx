@@ -131,6 +131,7 @@ export default function TempleManagementSystem() {
   const [selectedBeliever, setSelectedBeliever] = useState(null);
   const [showBulsaPopup, setShowBulsaPopup] = useState(false);
   const [showDepositPopup, setShowDepositPopup] = useState(false);
+  const [showViewPopup, setShowViewPopup] = useState(false);
   const [showBulsaEditPopup, setShowBulsaEditPopup] = useState(false);
   const [editingBulsaIndex, setEditingBulsaIndex] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -247,6 +248,12 @@ const [sortOrder, setSortOrder] = useState('asc');
       setDepositForm(emptyDeposit);
       return true;
     }
+    if (showViewPopup) {
+  setShowViewPopup(false);
+  setSelectedBeliever(null);
+  setFormData(emptyForm);
+  return true;
+}
     if (showEditPopup) {
       setShowEditPopup(false);
       setSelectedBeliever(null);
@@ -270,8 +277,9 @@ const [sortOrder, setSortOrder] = useState('asc');
     return false;
   }, [
     viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup,
-    showBulsaEditPopup, showBulsaPopup, showDepositPopup,
-    showEditPopup, showDeletePopup, showAddForm,
+  showBulsaEditPopup, showBulsaPopup, showDepositPopup,
+  showEditPopup, showDeletePopup, showAddForm,
+  showViewPopup,
     emptyBulsa, emptyDeposit, emptyForm,
     editBulsaPhotoPreviews, bulsaPhotoPreviews, photoPreviews
   ]);
@@ -295,7 +303,7 @@ const [sortOrder, setSortOrder] = useState('asc');
     const anyPopupOpen = showAddForm || showEditPopup || showDeletePopup || 
                      showBulsaPopup || showDepositPopup || showBulsaEditPopup || 
                      viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm || 
-                     showMonthlyDepositPopup || showPeriodDepositPopup;
+                     showMonthlyDepositPopup || showPeriodDepositPopup || showViewPopup;
 
     if (anyPopupOpen) {
       historyPushRef.current = true;
@@ -309,7 +317,7 @@ const [sortOrder, setSortOrder] = useState('asc');
     isLoggedIn, showAddForm, showEditPopup, showDeletePopup,
     showBulsaPopup, showDepositPopup, showBulsaEditPopup,
     viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, 
-    showMonthlyDepositPopup, showPeriodDepositPopup
+    showMonthlyDepositPopup, showPeriodDepositPopup, showViewPopup
   ]);
 
   const handleInstallClick = async () => {
@@ -587,11 +595,15 @@ const [sortOrder, setSortOrder] = useState('asc');
   };
 
   const handleEdit = useCallback((believer) => {
-    setSelectedBeliever(believer);
-    setFormData({ ...believer, bulsa: believer.bulsa || [], deposits: believer.deposits || [], unpaid: believer.unpaid || '' });
-    setShowEditPopup(true);
-  }, []);
-
+  setSelectedBeliever(believer);
+  setFormData({ ...believer, bulsa: believer.bulsa || [], deposits: believer.deposits || [], unpaid: believer.unpaid || '' });
+  
+  if (userRole === 'admin') {
+    setShowEditPopup(true);      
+  } else {
+    setShowViewPopup(true);      
+  }
+}, [userRole]); 
   const confirmEdit = () => {
     if (!formData.name || !formData.phone) {
       alert('이름과 전화번호는 필수입니다.');
@@ -1077,12 +1089,10 @@ const [sortOrder, setSortOrder] = useState('asc');
                       {sortedBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
-                            {userRole === 'admin' ? (
-                              <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">{believer.name}</button>
-                            ) : (
-                              <span>{believer.name}</span>
-                            )}
-                          </td>
+  <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
+    {believer.name}
+  </button>
+</td>
                           <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
                               {believer.bulsa && believer.bulsa.length > 0 ? (
@@ -1509,7 +1519,43 @@ const [sortOrder, setSortOrder] = useState('asc');
             </div>
           </div>
         )}
+{showViewPopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-amber-900">신도 정보</h2>
+        <button onClick={() => { setShowViewPopup(false); setSelectedBeliever(null); }} className="text-gray-500 hover:text-gray-700">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      
+      {/* 수정 불가능한 읽기 전용 필드들 */}
+      <div className="space-y-4 mb-6">
+        <div className="bg-amber-50 rounded-lg p-4 border-2 border-amber-200">
+          <label className="block text-sm font-bold text-amber-900 mb-2">이름</label>
+          <p className="text-lg text-gray-800">{formData.name}</p>
+        </div>
+        
+        <div className="bg-amber-50 rounded-lg p-4 border-2 border-amber-200">
+          <label className="block text-sm font-bold text-amber-900 mb-2">전화번호</label>
+          <p className="text-lg text-gray-800">{formData.phone}</p>
+        </div>
+        
+        <div className="bg-amber-50 rounded-lg p-4 border-2 border-amber-200">
+          <label className="block text-sm font-bold text-amber-900 mb-2">주소</label>
+          <p className="text-lg text-gray-800">{formData.address || '등록된 주소가 없습니다.'}</p>
+        </div>
+      </div>
 
+      <button 
+        onClick={() => { setShowViewPopup(false); setSelectedBeliever(null); }} 
+        className="w-full px-8 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold"
+      >
+        닫기
+      </button>
+    </div>
+  </div>
+)}
         {/* 삭제 확인 팝업 */}
         {showDeletePopup && selectedBeliever && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
