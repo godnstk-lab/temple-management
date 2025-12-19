@@ -1,49 +1,16 @@
-// Service Worker for PWA
-const CACHE_NAME = 'temple-management-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
-
-// 설치 이벤트
+// 매우 간단한 Service Worker - Next.js와 충돌 방지
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+  console.log('Service Worker 설치됨');
   self.skipWaiting();
 });
 
-// 활성화 이벤트
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  return self.clients.claim();
+  console.log('Service Worker 활성화됨');
+  event.waitUntil(self.clients.claim());
 });
 
-// Fetch 이벤트
+// fetch는 기본 동작만 수행
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
-  );
+  // 그냥 네트워크 요청만 전달
+  event.respondWith(fetch(event.request));
 });
