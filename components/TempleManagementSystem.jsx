@@ -1160,8 +1160,382 @@ export default function TempleManagementSystem() {
           )}
         </div>
 
-        {/* 나머지 팝업들은 기존 코드와 동일하므로 생략... */}
-        {/* (신도 추가 폼, 불사내용 팝업, 입금내역 팝업 등 모두 포함) */}
+{/* 신도 추가 폼 팝업 */}
+{showAddForm && userRole === 'admin' && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-16 sm:pt-8">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl mb-8 overflow-y-auto max-h-[85vh] sm:max-h-[90vh]">
+      <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
+      
+      <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
+          <PhotoUploadButtons 
+            onPhotoChange={memoizedHandlePhotoChange}
+            show={true} 
+            currentCount={photoPreviews.length}
+            maxCount={3}
+          />
+        </div>
+
+        <MultiPhotoPreview 
+          photos={photoPreviews} 
+          onRemove={memoizedRemovePhoto}
+        />
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
+          <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" />
+          <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} />
+        </div>
+      </div>
+
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">불사 정보 (선택사항)</h3>
+        <BulsaFormFields form={newBulsaData} setForm={setNewBulsaData} />
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
+        <button onClick={handleAddBeliever} disabled={isUploading} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          {isUploading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>업로드 중... {uploadProgress > 0 ? `${uploadProgress}%` : ''}</span>
+            </div>
+          ) : '추가하기'}
+        </button>
+        <button onClick={() => { setShowAddForm(false); photoPreviews.forEach(url => URL.revokeObjectURL(url)); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold" disabled={isUploading}>
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 신도 정보 수정 팝업 */}
+{showEditPopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-2xl">
+      <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 정보 수정</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
+        <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} />
+        <div className="md:col-span-2">
+          <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} />
+        </div>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <button onClick={confirmEdit} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all">
+          수정 완료
+        </button>
+        <button onClick={() => { setShowEditPopup(false); setSelectedBeliever(null); setFormData(emptyForm); }} className="sm:px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 신도 삭제 확인 팝업 */}
+{showDeletePopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md">
+      <h2 className="text-xl sm:text-2xl font-bold text-red-600 mb-4">정말 삭제하시겠습니까?</h2>
+      <p className="text-gray-700 mb-6">
+        <span className="font-bold text-lg">{selectedBeliever.name}</span> 신도의 모든 정보가 영구적으로 삭제됩니다.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <button onClick={confirmDelete} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors">
+          삭제
+        </button>
+        <button onClick={() => { setShowDeletePopup(false); setSelectedBeliever(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition-colors">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 불사내용 팝업 */}
+{showBulsaPopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-8 sm:pt-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-6xl my-4 overflow-y-auto max-h-[95vh]">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-amber-900">{selectedBeliever.name}님의 불사내용</h2>
+        <button onClick={() => { setShowBulsaPopup(false); setBulsaForm(emptyBulsa); bulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setBulsaPhotoFiles([]); setBulsaPhotoPreviews([]); }} className="text-gray-500 hover:text-gray-700">
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      </div>
+
+      {userRole === 'admin' && (
+        <div className="mb-6 p-4 sm:p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base sm:text-lg font-bold text-blue-900">새 불사내용 추가</h3>
+            <PhotoUploadButtons 
+              onPhotoChange={memoizedHandleBulsaPhotoChange}
+              show={true} 
+              currentCount={bulsaPhotoPreviews.length}
+              maxCount={3}
+            />
+          </div>
+          
+          <MultiPhotoPreview 
+            photos={bulsaPhotoPreviews} 
+            onRemove={memoizedRemoveBulsaPhoto}
+          />
+          
+          <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
+          
+          <button onClick={addBulsa} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all">
+            불사내용 추가
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">등록된 불사내용 ({selectedBeliever.bulsa?.length || 0}건)</h3>
+        {selectedBeliever.bulsa && selectedBeliever.bulsa.length > 0 ? (
+          selectedBeliever.bulsa.map((item, index) => (
+            <div key={index} className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 sm:p-6 rounded-xl border-2 border-blue-200 shadow-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">불사내용</p>
+                  <p className="font-bold text-blue-900 text-base sm:text-lg">{item.content}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">금액</p>
+                  <p className="font-bold text-blue-700 text-base sm:text-lg">{formatNumber(item.amount)}{parseInt(item.amount) >= 10000 ? '원' : '만원'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">봉안자/복위자</p>
+                  <p className="font-semibold text-gray-800">{item.person || '-'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-600 mb-1">크기</p>
+                    <p className="font-semibold text-gray-800">{item.size || '-'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {item.location && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-600 mb-1">봉안위치</p>
+                  <p className="font-semibold text-gray-800">{item.location}</p>
+                </div>
+              )}
+
+              {item.photoURLs && item.photoURLs.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-600 mb-2">사진 ({item.photoURLs.length}장)</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {item.photoURLs.map((photoUrl, photoIndex) => (
+                      <img key={photoIndex} src={photoUrl.thumbnail || photoUrl.original} alt={`불사 사진 ${photoIndex + 1}`} onClick={() => { setViewPhotoUrl(photoUrl.original); setViewPhotoModal(true); }} className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border-2 border-blue-300" />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {userRole === 'admin' && (
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => openBulsaEditPopup(index)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition-colors text-sm">
+                    수정
+                  </button>
+                  <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index }); setShowBulsaDeleteConfirm(true); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition-colors text-sm">
+                    삭제
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <p className="text-lg">등록된 불사내용이 없습니다.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <button onClick={() => { setShowBulsaPopup(false); setBulsaForm(emptyBulsa); bulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setBulsaPhotoFiles([]); setBulsaPhotoPreviews([]); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold transition-colors">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 불사내용 수정 팝업 */}
+{showBulsaEditPopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-16 sm:pt-8">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl mb-8">
+      <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-4 sm:mb-6">불사내용 수정</h2>
+      
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-bold text-gray-800">기존 사진 ({editBulsaForm.photoURLs?.length || 0}장)</h3>
+        <PhotoUploadButtons 
+          onPhotoChange={memoizedHandleEditBulsaPhotoChange}
+          show={true} 
+          currentCount={(editBulsaForm.photoURLs?.length || 0) + editBulsaPhotoPreviews.length}
+          maxCount={3}
+        />
+      </div>
+
+      {editBulsaForm.photoURLs && editBulsaForm.photoURLs.length > 0 && (
+        <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {editBulsaForm.photoURLs.map((photoUrl, index) => (
+            <div key={index} className="relative">
+              <img src={photoUrl.thumbnail || photoUrl.original} alt={`기존 사진 ${index + 1}`} className="w-full h-32 object-cover rounded-lg border-2 border-blue-300" />
+              <button type="button" onClick={() => { const newPhotoURLs = editBulsaForm.photoURLs.filter((_, i) => i !== index); setEditBulsaForm({...editBulsaForm, photoURLs: newPhotoURLs}); }} className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <MultiPhotoPreview 
+        photos={editBulsaPhotoPreviews} 
+        onRemove={memoizedRemoveEditBulsaPhoto}
+      />
+
+      <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
+
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
+        <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all">
+          수정 완료
+        </button>
+        <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="sm:px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 불사 삭제 확인 팝업 */}
+{showBulsaDeleteConfirm && deleteBulsaInfo && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md">
+      <h2 className="text-xl sm:text-2xl font-bold text-red-600 mb-4">불사내용 삭제</h2>
+      <p className="text-gray-700 mb-6">이 불사내용을 삭제하시겠습니까?</p>
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <button onClick={() => { deleteBulsa(deleteBulsaInfo.believerId, deleteBulsaInfo.index); setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors">
+          삭제
+        </button>
+        <button onClick={() => { setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition-colors">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 입금내역 팝업 */}
+{showDepositPopup && selectedBeliever && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-8 sm:pt-4">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-amber-900">{selectedBeliever.name}님의 입금내역</h2>
+        <button onClick={() => { setShowDepositPopup(false); setDepositForm(emptyDeposit); }} className="text-gray-500 hover:text-gray-700">
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      </div>
+
+      {userRole === 'admin' && (
+        <div className="mb-6 p-4 sm:p-6 bg-green-50 rounded-xl border-2 border-green-200">
+          <h3 className="text-base sm:text-lg font-bold text-green-900 mb-4">새 입금내역 추가</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+            <FormInput label="입금일" type="date" value={depositForm.date} onChange={(e) => setDepositForm({...depositForm, date: e.target.value})} max={new Date().toISOString().split('T')[0]} />
+            <FormInput label="입금액 (만원)" type="number" value={depositForm.amount} onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})} placeholder="0" />
+          </div>
+          <button onClick={addDeposit} className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all">
+            입금내역 추가
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">입금내역 ({selectedBeliever.deposits?.length || 0}건)</h3>
+        {selectedBeliever.deposits && selectedBeliever.deposits.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-green-100 to-emerald-100 border-b-2 border-green-300">
+                  <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">입금일</th>
+                  <th className="px-4 py-3 text-right text-sm font-bold text-gray-800">입금액</th>
+                  {userRole === 'admin' && <th className="px-4 py-3 text-center text-sm font-bold text-gray-800">관리</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {getSortedDeposits(selectedBeliever.deposits).map((deposit, index) => (
+                  <tr key={index} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-800">{new Date(deposit.date).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-sm text-right font-bold text-green-600">{formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}</td>
+                    {userRole === 'admin' && (
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index }); setShowDepositDeleteConfirm(true); }} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded transition-colors">
+                          삭제
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-green-50 border-t-2 border-green-300">
+                  <td className="px-4 py-4 text-left font-bold text-gray-800">합계</td>
+                  <td className="px-4 py-4 text-right font-bold text-green-600 text-lg">
+                    {formatNumber(getTotalDepositAmount(selectedBeliever.deposits))}{getTotalDepositAmount(selectedBeliever.deposits) >= 10000 ? '원' : '만원'}
+                  </td>
+                  {userRole === 'admin' && <td></td>}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <p className="text-lg">등록된 입금내역이 없습니다.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <button onClick={() => { setShowDepositPopup(false); setDepositForm(emptyDeposit); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold transition-colors">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 입금내역 삭제 확인 팝업 */}
+{showDepositDeleteConfirm && deleteDepositInfo && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md">
+      <h2 className="text-xl sm:text-2xl font-bold text-red-600 mb-4">입금내역 삭제</h2>
+      <p className="text-gray-700 mb-6">이 입금내역을 삭제하시겠습니까?</p>
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <button onClick={() => { deleteDeposit(deleteDepositInfo.believerId, deleteDepositInfo.index); setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors">
+          삭제
+        </button>
+        <button onClick={() => { setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg transition-colors">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 사진 크게 보기 모달 */}
+{viewPhotoModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" onClick={() => { setViewPhotoModal(false); setViewPhotoUrl(''); }}>
+    <div className="relative max-w-4xl max-h-[90vh]">
+      <button onClick={() => { setViewPhotoModal(false); setViewPhotoUrl(''); }} className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors">
+        <X className="w-8 h-8" />
+      </button>
+      <img src={viewPhotoUrl} alt="확대 사진" className="max-w-full max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+    </div>
+  </div>
+)}
       {/* 월별 입금내역 팝업 */}
 {showMonthlyDepositPopup && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
