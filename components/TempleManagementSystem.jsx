@@ -1160,7 +1160,27 @@ export default function TempleManagementSystem() {
           )}
         </div>
 
-        mber-500"
+        {/* 나머지 팝업들은 기존 코드와 동일하므로 생략... */}
+        {/* (신도 추가 폼, 불사내용 팝업, 입금내역 팝업 등 모두 포함) */}
+      {/* 월별 입금내역 팝업 */}
+{showMonthlyDepositPopup && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+    <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-6xl my-4 overflow-y-auto max-h-[95vh]">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-amber-900">📅 월별 입금내역</h2>
+        <button onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }} className="text-gray-500 hover:text-gray-700">
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-sm font-bold text-amber-900 mb-2">조회할 월 선택</label>
+        <input 
+          type="month" 
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          max={new Date().toISOString().slice(0, 7)}
+          className="w-full sm:w-auto px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
         />
       </div>
 
