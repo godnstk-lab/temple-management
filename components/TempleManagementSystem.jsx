@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Lock, LogOut, Plus, Trash2, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, onValue } from 'firebase/database';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -106,35 +106,6 @@ const BulsaFormFields = React.memo(({ form, setForm }) => (
   </div>
 ));
 
-// 정렬 버튼 컴포넌트
-const SortButton = React.memo(({ currentSort, column, onSort }) => {
-  const isActive = currentSort.column === column;
-  const direction = isActive ? currentSort.direction : null;
-  
-  return (
-    <button
-      onClick={() => onSort(column)}
-      className={`ml-2 p-1 rounded transition-all ${
-        isActive 
-          ? 'bg-amber-200 text-amber-900' 
-          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-      }`}
-      title={`${column === 'bulsa' ? '불사금액' : '입금액'} ${direction === 'asc' ? '내림차순' : '오름차순'} 정렬`}
-    >
-      {direction === 'asc' ? (
-        <ChevronUp className="w-4 h-4" />
-      ) : direction === 'desc' ? (
-        <ChevronDown className="w-4 h-4" />
-      ) : (
-        <div className="w-4 h-4 flex flex-col items-center justify-center">
-          <ChevronUp className="w-3 h-2 -mb-1" />
-          <ChevronDown className="w-3 h-2" />
-        </div>
-      )}
-    </button>
-  );
-});
-
 export default function TempleManagementSystem() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState('');
@@ -167,12 +138,6 @@ export default function TempleManagementSystem() {
   const [deleteDepositInfo, setDeleteDepositInfo] = useState(null);
   const [showMonthlyDepositPopup, setShowMonthlyDepositPopup] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
-  const [showPeriodDepositPopup, setShowPeriodDepositPopup] = useState(false);
-  const [periodStartDate, setPeriodStartDate] = useState('');
-  const [periodEndDate, setPeriodEndDate] = useState('');
-  
-  // 정렬 상태 추가
-  const [sortConfig, setSortConfig] = useState({ column: null, direction: null });
   
   // useMemo로 상수 최적화
   const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' }), []);
@@ -229,12 +194,6 @@ export default function TempleManagementSystem() {
       setDeleteDepositInfo(null);
       return true;
     }
-    if (showPeriodDepositPopup) {
-      setShowPeriodDepositPopup(false);
-      setPeriodStartDate('');
-      setPeriodEndDate('');
-      return true;
-    }
     if (showMonthlyDepositPopup) {
       setShowMonthlyDepositPopup(false);
       setSelectedMonth('');
@@ -284,7 +243,7 @@ export default function TempleManagementSystem() {
     }
     return false;
   }, [
-    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup, showPeriodDepositPopup,
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup,
     showBulsaEditPopup, showBulsaPopup, showDepositPopup,
     showEditPopup, showDeletePopup, showAddForm,
     emptyBulsa, emptyDeposit, emptyForm,
@@ -309,8 +268,7 @@ export default function TempleManagementSystem() {
 
     const anyPopupOpen = showAddForm || showEditPopup || showDeletePopup || 
                          showBulsaPopup || showDepositPopup || showBulsaEditPopup || 
-                         viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm || 
-                         showMonthlyDepositPopup || showPeriodDepositPopup;
+                         viewPhotoModal || showBulsaDeleteConfirm || showDepositDeleteConfirm || showMonthlyDepositPopup;
 
     if (anyPopupOpen) {
       historyPushRef.current = true;
@@ -323,8 +281,7 @@ export default function TempleManagementSystem() {
   }, [
     isLoggedIn, showAddForm, showEditPopup, showDeletePopup,
     showBulsaPopup, showDepositPopup, showBulsaEditPopup,
-    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, 
-    showMonthlyDepositPopup, showPeriodDepositPopup
+    viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, showMonthlyDepositPopup
   ]);
 
   const handleInstallClick = async () => {
@@ -784,24 +741,8 @@ export default function TempleManagementSystem() {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  // 정렬 핸들러 추가
-  const handleSort = useCallback((column) => {
-    setSortConfig(prev => {
-      if (prev.column === column) {
-        // 같은 컬럼 클릭: asc -> desc -> null
-        if (prev.direction === 'asc') {
-          return { column, direction: 'desc' };
-        } else if (prev.direction === 'desc') {
-          return { column: null, direction: null };
-        }
-      }
-      // 다른 컬럼 클릭 또는 null 상태: asc로 시작
-      return { column, direction: 'asc' };
-    });
-  }, []);
-
   const filteredBelievers = useMemo(() => {
-    let result = believers.filter(b => {
+    return believers.filter(b => {
       if (!searchTerm) return true;
       const searchParts = searchTerm.trim().split(/\s+/);
       const sizeKeywords = [];
@@ -829,30 +770,7 @@ export default function TempleManagementSystem() {
       const hasBulsaWithSize = (b.bulsa || []).some(item => sizeKeywords.includes(item.size));
       return allTextMatches && hasBulsaWithSize;
     });
-
-    // 정렬 적용
-    if (sortConfig.column && sortConfig.direction) {
-      result = [...result].sort((a, b) => {
-        let aValue, bValue;
-        
-        if (sortConfig.column === 'bulsa') {
-          aValue = getTotalBulsaAmount(a.bulsa || []);
-          bValue = getTotalBulsaAmount(b.bulsa || []);
-        } else if (sortConfig.column === 'deposit') {
-          aValue = getTotalDepositAmount(a.deposits || []);
-          bValue = getTotalDepositAmount(b.deposits || []);
-        }
-        
-        if (sortConfig.direction === 'asc') {
-          return aValue - bValue;
-        } else {
-          return bValue - aValue;
-        }
-      });
-    }
-
-    return result;
-  }, [believers, searchTerm, sortConfig, getTotalBulsaAmount, getTotalDepositAmount]);
+  }, [believers, searchTerm]);
 
   const searchTotals = useMemo(() => {
     return filteredBelievers.reduce((totals, believer) => {
@@ -897,13 +815,6 @@ export default function TempleManagementSystem() {
     removePhoto(index, setEditBulsaPhotoFiles, setEditBulsaPhotoPreviews, editBulsaPhotoFiles, editBulsaPhotoPreviews),
     [removePhoto, editBulsaPhotoFiles, editBulsaPhotoPreviews]
   );
-  
-  // 입금내역을 날짜순으로 정렬하는 함수
-  const getSortedDeposits = useCallback((deposits) => {
-    if (!deposits || deposits.length === 0) return [];
-    return [...deposits].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, []);
-  
   if (!isLoggedIn) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-amber-900 to-slate-900 flex items-center justify-center p-4 overflow-hidden" style={{paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)'}}>
@@ -950,6 +861,7 @@ export default function TempleManagementSystem() {
               <span className="relative">입장하기</span>
             </button>
             
+            {/* 앱 설치 안내 */}
             {showInstallButton && (
               <div className="text-center">
                 <button 
@@ -1020,26 +932,8 @@ export default function TempleManagementSystem() {
                     <thead>
                       <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">이름</th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <span>불사내용</span>
-                            <SortButton 
-                              currentSort={sortConfig} 
-                              column="bulsa" 
-                              onSort={handleSort} 
-                            />
-                          </div>
-                        </th>
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <span>입금액</span>
-                            <SortButton 
-                              currentSort={sortConfig} 
-                              column="deposit" 
-                              onSort={handleSort} 
-                            />
-                          </div>
-                        </th>
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">불사내용</th>
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">입금액</th>
                         <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">미수금</th>
                         {userRole === 'admin' && (
                           <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
@@ -1105,22 +999,13 @@ export default function TempleManagementSystem() {
             <div className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 sm:p-6 border-2 border-amber-300">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3 sm:mb-4">
                 <h3 className="text-sm sm:text-lg font-bold text-amber-900">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
-                <div className="flex gap-2 flex-wrap">
-                  <button 
-                    onClick={() => setShowPeriodDepositPopup(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg transition-all shadow-md text-sm whitespace-nowrap"
-                  >
-                    <span>📆</span>
-                    <span>기간별 입금내역</span>
-                  </button>
-                  <button 
-                    onClick={() => setShowMonthlyDepositPopup(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition-all shadow-md text-sm whitespace-nowrap"
-                  >
-                    <span>📅</span>
-                    <span>월별 입금내역</span>
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setShowMonthlyDepositPopup(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition-all shadow-md text-sm whitespace-nowrap"
+                >
+                  <span>📅</span>
+                  <span>월별 입금내역</span>
+                </button>
               </div>
               <div className="space-y-3">
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
@@ -1180,8 +1065,556 @@ export default function TempleManagementSystem() {
           )}
         </div>
 
-        {/* 나머지 팝업들은 기존 코드와 동일하므로 생략... */}
-        {/* (신도 추가 폼, 불사내용 팝업, 입금내역 팝업 등 모두 포함) */}
+        {/* 신도 추가 폼 */}
+        {showAddForm && userRole === 'admin' && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-16 sm:pt-8">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl mb-8 overflow-y-auto max-h-[85vh] sm:max-h-[90vh]">
+              <h2 className="text-xl sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">신도 추가</h2>
+              
+              <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2 border-amber-200">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-amber-800">기본 정보</h3>
+                  <PhotoUploadButtons 
+                    onPhotoChange={memoizedHandlePhotoChange}
+                    show={true} 
+                    currentCount={photoPreviews.length}
+                    maxCount={3}
+                  />
+                </div>
+
+                <MultiPhotoPreview 
+                  photos={photoPreviews} 
+                  onRemove={memoizedRemovePhoto}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                  <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
+                  <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="address"]').focus(); }}} />
+                  <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); const target = document.querySelector('input[placeholder="예: 용두관음"]'); if (target) target.focus(); }}} />
+                </div>
+              </div>
+
+              <div className="mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">불사 정보 (선택사항)</h3>
+                <BulsaFormFields form={newBulsaData} setForm={setNewBulsaData} />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
+                <button onClick={handleAddBeliever} disabled={isUploading} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3.5 sm:py-3 text-base sm:text-lg rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isUploading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>업로드 중... {uploadProgress > 0 ? `${uploadProgress}%` : ''}</span>
+                    </div>
+                  ) : '추가하기'}
+                </button>
+                <button onClick={() => { setShowAddForm(false); photoPreviews.forEach(url => URL.revokeObjectURL(url)); setPhotoFiles([]); setPhotoPreviews([]); }} className="sm:px-8 py-3.5 sm:py-3 text-base sm:text-lg bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors font-bold" disabled={isUploading}>
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 불사내용 팝업 */}
+        {showBulsaPopup && selectedBeliever && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">{selectedBeliever.name}님 불사내용</h2>
+                <button onClick={() => setShowBulsaPopup(false)} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              {selectedBeliever.bulsa && selectedBeliever.bulsa.length > 0 && (
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+                  <h3 className="font-bold text-amber-900 mb-3 text-sm sm:text-base">등록된 불사내용</h3>
+                  {selectedBeliever.bulsa.map((b, idx) => (
+                    <div key={idx} className="mb-4 pb-4 border-b border-amber-200 last:border-0">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
+                          <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
+                          {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
+                        </div>
+                        {userRole === 'admin' && (
+                          <div className="flex gap-2">
+                            <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
+                            <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
+                          </div>
+                        )}
+                      </div>
+                      {b.photoURLs && b.photoURLs.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          {b.photoURLs.map((photoData, photoIdx) => {
+                            const thumbnailUrl = typeof photoData === 'object' ? photoData.thumbnail : photoData;
+                            const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
+                            
+                            return (
+                              <img 
+                                key={photoIdx}
+                                src={thumbnailUrl} 
+                                alt={`불사 사진 ${photoIdx + 1}`}
+                                onClick={() => { setViewPhotoUrl(originalUrl); setViewPhotoModal(true); }} 
+                                className="w-full h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                      {b.photoURL && !b.photoURLs && (
+                        <div className="mt-2">
+                          <img 
+                            src={b.photoURL} 
+                            alt="불사 사진" 
+                            onClick={() => { setViewPhotoUrl(b.photoURL); setViewPhotoModal(true); }} 
+                            className="w-32 h-24 object-cover rounded border-2 border-amber-400 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="mt-3 pt-3 border-t-2 border-amber-300">
+                    <span className="font-bold text-amber-900 text-sm sm:text-base">총 불사금액: </span>
+                    <span className="font-bold text-blue-600 text-base sm:text-lg">{formatNumber(getTotalBulsaAmount(selectedBeliever.bulsa))}만원</span>
+                  </div>
+                </div>
+              )}
+
+              {userRole === 'admin' && (
+                <>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="font-bold text-amber-900 text-sm sm:text-base">새 불사내용 추가</h3>
+                    <PhotoUploadButtons 
+                      onPhotoChange={memoizedHandleBulsaPhotoChange}
+                      show={true} 
+                      currentCount={bulsaPhotoPreviews.length}
+                      maxCount={3}
+                    />
+                  </div>
+
+                  <MultiPhotoPreview 
+                    photos={bulsaPhotoPreviews} 
+                    onRemove={memoizedRemoveBulsaPhoto}
+                  />
+                  <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button onClick={addBulsa} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all">추가하기</button>
+                    <button onClick={() => setShowBulsaPopup(false)} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
+                  </div>
+                </>
+              )}
+
+              {userRole !== 'admin' && (
+                <button onClick={() => setShowBulsaPopup(false)} className="w-full px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 불사내용 수정 팝업 */}
+        {showBulsaEditPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-4xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">불사내용 수정</h2>
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-amber-900 text-sm">사진 ({(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}/3)</h3>
+                  <PhotoUploadButtons 
+                    onPhotoChange={memoizedHandleEditBulsaPhotoChange}
+                    show={true} 
+                    currentCount={(editBulsaForm.photoURLs || []).length + editBulsaPhotoPreviews.length}
+                    maxCount={3}
+                  />
+                </div>
+
+                {editBulsaForm.photoURLs && editBulsaForm.photoURLs.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-600 mb-2">기존 사진</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {editBulsaForm.photoURLs.map((photoData, index) => {
+                        const url = typeof photoData === 'object' ? photoData.thumbnail : photoData;
+                        return (
+                          <div key={index} className="relative">
+                            <img src={url} alt={`기존 사진 ${index + 1}`} className="w-full h-32 object-cover rounded-lg shadow-lg border-2 border-blue-300" />
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const newURLs = editBulsaForm.photoURLs.filter((_, i) => i !== index);
+                                setEditBulsaForm({...editBulsaForm, photoURLs: newURLs});
+                              }} 
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {editBulsaPhotoPreviews.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-600 mb-2">새로 추가할 사진</p>
+                    <MultiPhotoPreview 
+                      photos={editBulsaPhotoPreviews} 
+                      onRemove={memoizedRemoveEditBulsaPhoto}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
+                <button onClick={() => { setShowBulsaEditPopup(false); setEditingBulsaIndex(null); setEditBulsaForm(emptyBulsa); editBulsaPhotoPreviews.forEach(url => URL.revokeObjectURL(url)); setEditBulsaPhotoFiles([]); setEditBulsaPhotoPreviews([]); }} className="sm:px-8 py-3 text-sm sm:text-base bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 입금내역 팝업 */}
+        {showDepositPopup && selectedBeliever && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-amber-900">{selectedBeliever.name}님 입금내역</h2>
+                <button onClick={() => setShowDepositPopup(false)} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {selectedBeliever.deposits && selectedBeliever.deposits.length > 0 && (
+                <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                  <h3 className="font-bold text-green-900 mb-3">등록된 입금내역</h3>
+                  {selectedBeliever.deposits.map((d, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-green-200 last:border-0">
+                      <div className="flex-1">
+                        <span className="font-semibold text-gray-800">{d.date}</span>
+                        <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
+                      </div>
+                      {userRole === 'admin' && (
+                        <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index: idx, date: d.date, amount: d.amount }); setShowDepositDeleteConfirm(true); }} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="mt-3 pt-3 border-t-2 border-green-300">
+                    <span className="font-bold text-green-900">총 입금액: </span>
+                    <span className="font-bold text-green-600 text-lg">{formatNumber(getTotalDepositAmount(selectedBeliever.deposits))}만원</span>
+                  </div>
+                </div>
+              )}
+
+              {userRole === 'admin' && (
+                <>
+                  <h3 className="font-bold text-green-900 mb-4">새 입금내역 추가</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <FormInput label="날짜" type="date" value={depositForm.date} onChange={(e) => setDepositForm({...depositForm, date: e.target.value})} />
+                    <FormInput label="금액 (만원)" type="number" value={depositForm.amount} onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})} placeholder="0" />
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button onClick={addDeposit} className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all">추가하기</button>
+                    <button onClick={() => setShowDepositPopup(false)} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
+                  </div>
+                </>
+              )}
+
+              {userRole !== 'admin' && (
+                <button onClick={() => setShowDepositPopup(false)} className="w-full px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 신도 정보 수정 팝업 */}
+        {showEditPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold text-amber-900 mb-6">신도 정보 수정</h2>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
+                <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} />
+                <FormInput label="주소" className="col-span-2" type="text" name="address" value={formData.address} onChange={handleInputChange} />
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={confirmEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
+                <button onClick={() => { setShowEditPopup(false); setSelectedBeliever(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 삭제 확인 팝업 */}
+        {showDeletePopup && selectedBeliever && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">신도 삭제</h2>
+                <p className="text-gray-600">정말 삭제하시겠습니까?</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">삭제할 신도 정보:</p>
+                <p className="font-bold text-lg text-gray-800">{selectedBeliever.name}</p>
+                <p className="text-sm text-gray-600">{selectedBeliever.phone}</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={confirmDelete} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowDeletePopup(false); setSelectedBeliever(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 불사내용 삭제 확인 팝업 */}
+        {showBulsaDeleteConfirm && deleteBulsaInfo && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">불사내용 삭제</h2>
+                <p className="text-gray-600">정말 삭제하시겠습니까?</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">삭제할 불사내용:</p>
+                <p className="font-bold text-lg text-gray-800">{deleteBulsaInfo.content}</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => { deleteBulsa(deleteBulsaInfo.believerId, deleteBulsaInfo.index); setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowBulsaDeleteConfirm(false); setDeleteBulsaInfo(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 입금내역 삭제 확인 팝업 */}
+        {showDepositDeleteConfirm && deleteDepositInfo && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">입금내역 삭제</h2>
+                <p className="text-gray-600">정말 삭제하시겠습니까?</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">삭제할 입금내역:</p>
+                <p className="font-bold text-lg text-gray-800">{deleteDepositInfo.date}</p>
+                <p className="text-sm text-gray-600">{formatNumber(deleteDepositInfo.amount)}만원</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={() => { deleteDeposit(deleteDepositInfo.believerId, deleteDepositInfo.index); setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-3 rounded-lg hover:from-red-600 hover:to-red-700 transition-all">삭제하기</button>
+                <button onClick={() => { setShowDepositDeleteConfirm(false); setDeleteDepositInfo(null); }} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 사진 크게 보기 모달 */}
+        {viewPhotoModal && (
+          <div 
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center" 
+            onClick={() => setViewPhotoModal(false)}
+            style={{
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)'
+            }}
+          >
+            <div className="relative w-full h-full flex items-center justify-center">
+              <img 
+                src={viewPhotoUrl} 
+                alt="불사 사진 확대" 
+                className="max-w-full max-h-full object-contain"
+                style={{ 
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100vw',
+                  maxHeight: '100vh'
+                }}
+              />
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewPhotoModal(false); }} 
+                className="absolute top-4 right-4 bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-3 shadow-2xl transition-all z-10"
+                style={{
+                  top: 'max(1rem, env(safe-area-inset-top))',
+                  right: 'max(1rem, env(safe-area-inset-right))'
+                }}
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
+                화면을 탭하면 닫힙니다
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 월별 입금내역 팝업 */}
+        {showMonthlyDepositPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-8 w-full max-w-6xl my-4 overflow-y-auto max-h-[95vh]">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-amber-900">📅 월별 입금내역</h2>
+                <button onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+
+              {/* 월 선택 */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold text-amber-900 mb-2">조회할 월 선택</label>
+                <input 
+                  type="month" 
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  max={new Date().toISOString().slice(0, 7)}
+                  className="w-full sm:w-auto px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+
+              {selectedMonth && (() => {
+                // 선택된 월의 입금내역 필터링
+                const [year, month] = selectedMonth.split('-');
+                const monthlyDeposits = [];
+                
+                filteredBelievers.forEach(believer => {
+                  if (believer.deposits && believer.deposits.length > 0) {
+                    believer.deposits.forEach(deposit => {
+                      if (deposit.date.startsWith(selectedMonth)) {
+                        monthlyDeposits.push({
+                          ...deposit,
+                          believerName: believer.name,
+                          believerPhone: believer.phone,
+                          believerId: believer.id
+                        });
+                      }
+                    });
+                  }
+                });
+
+                // 날짜순 정렬
+                monthlyDeposits.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const totalAmount = monthlyDeposits.reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
+
+                return (
+                  <div>
+                    {/* 합계 표시 */}
+                    <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">💰</span>
+                          <div>
+                            <p className="text-sm text-gray-600">{year}년 {month}월</p>
+                            <p className="text-lg font-bold text-gray-800">총 입금액</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold text-green-600">
+                            {formatNumber(totalAmount)}
+                            <span className="text-base ml-1">{totalAmount >= 10000 ? '원' : '만원'}</span>
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">{monthlyDeposits.length}건</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {monthlyDeposits.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500">
+                        <p className="text-lg">해당 월의 입금내역이 없습니다.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-green-100 to-emerald-100 border-b-2 border-green-300">
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">날짜</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">신도명</th>
+                              <th className="px-4 py-3 text-right text-sm font-bold text-gray-800">입금액</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyDeposits.map((deposit, idx) => (
+                              <tr key={idx} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                                <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
+                                  {new Date(deposit.date).toLocaleDateString('ko-KR', { 
+                                    month: 'long', 
+                                    day: 'numeric',
+                                    weekday: 'short'
+                                  })}
+                                </td>
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">{deposit.believerName}</td>
+                                <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                                  {formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-green-50 border-t-2 border-green-300">
+                              <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-800">합계</td>
+                              <td className="px-4 py-4 text-right font-bold text-green-600 text-lg">
+                                {formatNumber(totalAmount)}{totalAmount >= 10000 ? '원' : '만원'}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {!selectedMonth && (
+                <div className="text-center py-12 text-gray-400">
+                  <span className="text-6xl mb-4 block">📅</span>
+                  <p className="text-lg">조회할 월을 선택해주세요</p>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }}
+                  className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold transition-colors"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
