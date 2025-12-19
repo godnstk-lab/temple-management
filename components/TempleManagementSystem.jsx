@@ -154,6 +154,8 @@ export default function TempleManagementSystem() {
   const [showPeriodDepositPopup, setShowPeriodDepositPopup] = useState(false);
 const [startDate, setStartDate] = useState('');
 const [endDate, setEndDate] = useState('');
+  const [mergeMonthlyDeposits, setMergeMonthlyDeposits] = useState(false);
+const [mergePeriodDeposits, setMergePeriodDeposits] = useState(false);
   const [sortBy, setSortBy] = useState('name');
 const [sortOrder, setSortOrder] = useState('asc');
   
@@ -1639,20 +1641,38 @@ const [sortOrder, setSortOrder] = useState('asc');
 
               {/* 월 선택 */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-amber-900 mb-2">조회할 월 선택</label>
-                <input 
-                  type="month" 
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  max={new Date().toISOString().slice(0, 7)}
-                  className="w-full sm:w-auto px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-bold text-amber-900 mb-2">조회할 월 선택</label>
+                    <input 
+                      type="month" 
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      max={new Date().toISOString().slice(0, 7)}
+                      className="w-full sm:w-auto px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    />
+                  </div>
+                  {selectedMonth && (
+                    <div className="flex items-center gap-2 bg-blue-50 px-4 py-3 rounded-lg border-2 border-blue-200">
+                      <input 
+                        type="checkbox" 
+                        id="mergeMonthly"
+                        checked={mergeMonthlyDeposits}
+                        onChange={(e) => setMergeMonthlyDeposits(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <label htmlFor="mergeMonthly" className="text-sm font-semibold text-gray-700 cursor-pointer whitespace-nowrap">
+                        같은 신도 합산
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {selectedMonth && (() => {
                 // 선택된 월의 입금내역 필터링
                 const [year, month] = selectedMonth.split('-');
-                const monthlyDeposits = [];
+                let monthlyDeposits = [];
                 
                 filteredBelievers.forEach(believer => {
                   if (believer.deposits && believer.deposits.length > 0) {
@@ -1672,6 +1692,23 @@ const [sortOrder, setSortOrder] = useState('asc');
                 // 날짜순 정렬
                 monthlyDeposits.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+                // 같은 신도 합산 처리
+                if (mergeMonthlyDeposits) {
+                  const mergedMap = new Map();
+                  monthlyDeposits.forEach(deposit => {
+                    const key = deposit.believerName;
+                    if (mergedMap.has(key)) {
+                      const existing = mergedMap.get(key);
+                      existing.amount = String(parseInt(existing.amount) + parseInt(deposit.amount));
+                      existing.count = (existing.count || 1) + 1;
+                    } else {
+                      mergedMap.set(key, { ...deposit, count: 1 });
+                    }
+                  });
+                  monthlyDeposits = Array.from(mergedMap.values());
+                  // 이름순 정렬
+                  monthlyDeposits.sort((a, b) => a.believerName.localeCompare(b.believerName));
+                }
                 const totalAmount = monthlyDeposits.reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
                 return (
@@ -1714,13 +1751,22 @@ const [sortOrder, setSortOrder] = useState('asc');
                             {monthlyDeposits.map((deposit, idx) => (
                               <tr key={idx} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
                                 <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
-                                  {new Date(deposit.date).toLocaleDateString('ko-KR', { 
-                                    month: 'long', 
-                                    day: 'numeric',
-                                    weekday: 'short'
-                                  })}
+                                  {mergeMonthlyDeposits ? (
+                                    <span className="text-gray-500">-</span>
+                                  ) : (
+                                    new Date(deposit.date).toLocaleDateString('ko-KR', { 
+                                      month: 'long', 
+                                      day: 'numeric',
+                                      weekday: 'short'
+                                    })
+                                  )}
                                 </td>
-                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">{deposit.believerName}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                                  {deposit.believerName}
+                                  {mergeMonthlyDeposits && deposit.count > 1 && (
+                                    <span className="ml-2 text-xs text-blue-600">({deposit.count}건)</span>
+                                  )}
+                                </td>
                                 <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
                                   {formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}
                                 </td>
@@ -1772,33 +1818,49 @@ const [sortOrder, setSortOrder] = useState('asc');
               </div>
 
               {/* 기간 선택 */}
-              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-amber-900 mb-2">시작일</label>
-                  <input 
-                    type="date" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
+              <div className="mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-bold text-amber-900 mb-2">시작일</label>
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-amber-900 mb-2">종료일</label>
+                    <input 
+                      type="date" 
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      min={startDate}
+                      className="w-full px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-amber-900 mb-2">종료일</label>
-                  <input 
-                    type="date" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    min={startDate}
-                    className="w-full px-4 py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  />
-                </div>
+                {startDate && endDate && (
+                  <div className="flex items-center gap-2 bg-blue-50 px-4 py-3 rounded-lg border-2 border-blue-200">
+                    <input 
+                      type="checkbox" 
+                      id="mergePeriod"
+                      checked={mergePeriodDeposits}
+                      onChange={(e) => setMergePeriodDeposits(e.target.checked)}
+                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <label htmlFor="mergePeriod" className="text-sm font-semibold text-gray-700 cursor-pointer whitespace-nowrap">
+                      같은 신도 합산
+                    </label>
+                  </div>
+                )}
               </div>
 
               {startDate && endDate && (() => {
                 // 선택된 기간의 입금내역 필터링
-                const periodDeposits = [];
+                let periodDeposits = [];
                 
                 filteredBelievers.forEach(believer => {
                   if (believer.deposits && believer.deposits.length > 0) {
@@ -1821,6 +1883,24 @@ const [sortOrder, setSortOrder] = useState('asc');
 
                 // 날짜순 정렬
                 periodDeposits.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                // 같은 신도 합산 처리
+                if (mergePeriodDeposits) {
+                  const mergedMap = new Map();
+                  periodDeposits.forEach(deposit => {
+                    const key = deposit.believerName;
+                    if (mergedMap.has(key)) {
+                      const existing = mergedMap.get(key);
+                      existing.amount = String(parseInt(existing.amount) + parseInt(deposit.amount));
+                      existing.count = (existing.count || 1) + 1;
+                    } else {
+                      mergedMap.set(key, { ...deposit, count: 1 });
+                    }
+                  });
+                  periodDeposits = Array.from(mergedMap.values());
+                  // 이름순 정렬
+                  periodDeposits.sort((a, b) => a.believerName.localeCompare(b.believerName));
+                }
 
                 const totalAmount = periodDeposits.reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
 
@@ -1866,14 +1946,23 @@ const [sortOrder, setSortOrder] = useState('asc');
                             {periodDeposits.map((deposit, idx) => (
                               <tr key={idx} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
                                 <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
-                                  {new Date(deposit.date).toLocaleDateString('ko-KR', { 
-                                    year: 'numeric',
-                                    month: 'long', 
-                                    day: 'numeric',
-                                    weekday: 'short'
-                                  })}
+                                  {mergePeriodDeposits ? (
+                                    <span className="text-gray-500">-</span>
+                                  ) : (
+                                    new Date(deposit.date).toLocaleDateString('ko-KR', { 
+                                      year: 'numeric',
+                                      month: 'long', 
+                                      day: 'numeric',
+                                      weekday: 'short'
+                                    })
+                                  )}
                                 </td>
-                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">{deposit.believerName}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                                  {deposit.believerName}
+                                  {mergePeriodDeposits && deposit.count > 1 && (
+                                    <span className="ml-2 text-xs text-blue-600">({deposit.count}건)</span>
+                                  )}
+                                </td>
                                 <td className="px-4 py-3 text-sm text-right font-bold text-blue-600">
                                   {formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}
                                 </td>
