@@ -11,6 +11,5 @@ self.addEventListener('activate', (event) => {
 
 // fetch는 기본 동작만 수행
 self.addEventListener('fetch', (event) => {
-  // 그냥 네트워크 요청만 전달
   event.respondWith(fetch(event.request));
 });
