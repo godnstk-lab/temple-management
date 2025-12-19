@@ -1128,23 +1128,24 @@ const [sortOrder, setSortOrder] = useState('asc');
           
           {filteredBelievers.length > 0 && (
 <div className="mb-3 sm:mb-4">
-  <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
-  <div className="grid grid-cols-2 gap-2">
-    <button 
-      onClick={() => setShowMonthlyDepositPopup(true)}
-      className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition-all shadow-md text-xs sm:text-sm"
-    >
-      <span>📅</span>
-      <span>월별 입금내역</span>
-    </button>
-    <button 
-      onClick={() => setShowPeriodDepositPopup(true)}
-      className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg transition-all shadow-md text-xs sm:text-sm"
-    >
-      <span>📆</span>
-      <span>기간별 입금내역</span>
-    </button>
-  </div>
+                <h3 className="text-sm sm:text-lg font-bold text-amber-900 mb-3">📊 검색 결과 총합계 ({filteredBelievers.length}명)</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => setShowMonthlyDepositPopup(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition-all shadow-md text-xs sm:text-sm"
+                  >
+                    <span>📅</span>
+                    <span>월별 입금내역</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowPeriodDepositPopup(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg transition-all shadow-md text-xs sm:text-sm"
+                  >
+                    <span>📆</span>
+                    <span>기간별 입금내역</span>
+                  </button>
+                </div>
+              </div>
 </div>
               <div className="space-y-3">
                 <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-200">
