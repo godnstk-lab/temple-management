@@ -1160,8 +1160,117 @@ export default function TempleManagementSystem() {
           )}
         </div>
 
-        {/* 나머지 팝업들은 기존 코드와 동일하므로 생략... */}
-        {/* (신도 추가 폼, 불사내용 팝업, 입금내역 팝업 등 모두 포함) */}
+        mber-500"
+        />
+      </div>
+
+      {selectedMonth && (() => {
+        const [year, month] = selectedMonth.split('-');
+        const monthlyDeposits = [];
+        
+        filteredBelievers.forEach(believer => {
+          if (believer.deposits && believer.deposits.length > 0) {
+            believer.deposits.forEach(deposit => {
+              if (deposit.date.startsWith(selectedMonth)) {
+                monthlyDeposits.push({
+                  ...deposit,
+                  believerName: believer.name,
+                  believerPhone: believer.phone,
+                  believerId: believer.id
+                });
+              }
+            });
+          }
+        });
+
+        monthlyDeposits.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const totalAmount = monthlyDeposits.reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
+
+        return (
+          <div>
+            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-300">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">💰</span>
+                  <div>
+                    <p className="text-sm text-gray-600">{year}년 {month}월</p>
+                    <p className="text-lg font-bold text-gray-800">총 입금액</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-green-600">
+                    {formatNumber(totalAmount)}
+                    <span className="text-base ml-1">{totalAmount >= 10000 ? '원' : '만원'}</span>
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">{monthlyDeposits.length}건</p>
+                </div>
+              </div>
+            </div>
+
+            {monthlyDeposits.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-lg">해당 월의 입금내역이 없습니다.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-green-100 to-emerald-100 border-b-2 border-green-300">
+                      <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">날짜</th>
+                      <th className="px-4 py-3 text-left text-sm font-bold text-gray-800">신도명</th>
+                      <th className="px-4 py-3 text-right text-sm font-bold text-gray-800">입금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyDeposits.map((deposit, idx) => (
+                      <tr key={idx} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                        <td className="px-4 py-3 text-sm text-gray-800 whitespace-nowrap">
+                          {new Date(deposit.date).toLocaleDateString('ko-KR', { 
+                            month: 'long', 
+                            day: 'numeric',
+                            weekday: 'short'
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-gray-800">{deposit.believerName}</td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                          {formatNumber(deposit.amount)}{parseInt(deposit.amount) >= 10000 ? '원' : '만원'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-green-50 border-t-2 border-green-300">
+                      <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-800">합계</td>
+                      <td className="px-4 py-4 text-right font-bold text-green-600 text-lg">
+                        {formatNumber(totalAmount)}{totalAmount >= 10000 ? '원' : '만원'}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {!selectedMonth && (
+        <div className="text-center py-12 text-gray-400">
+          <span className="text-6xl mb-4 block">📅</span>
+          <p className="text-lg">조회할 월을 선택해주세요</p>
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-end">
+        <button 
+          onClick={() => { setShowMonthlyDepositPopup(false); setSelectedMonth(''); }}
+          className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold transition-colors"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
