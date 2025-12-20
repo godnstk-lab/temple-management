@@ -198,20 +198,13 @@ const [sortOrder, setSortOrder] = useState('asc');
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
- // EmailJS 초기화 - 수정된 코드
+  // EmailJS 초기화
 useEffect(() => {
-  const initEmailJS = () => {
-    if (typeof window.emailjs !== 'undefined') {
-      window.emailjs.init('l3rSK_9MelwbU0Mml');
-      console.log('✅ EmailJS 초기화 완료');
-    } else {
-      console.log('⏳ EmailJS 로딩 대기 중...');
-      setTimeout(initEmailJS, 100); // 100ms 후 다시 시도
-    }
-  };
-  
-  initEmailJS();
+  if (typeof window.emailjs !== 'undefined') {
+    window.emailjs.init('l3rSK_9MelwbU0Mml');
+  }
 }, []);
+
   // 뒤로가기 처리 최적화
   const closeCurrentPopup = useCallback(() => {
     if (viewPhotoModal) {
@@ -422,6 +415,7 @@ useEffect(() => {
     setLoginPassword('');
     setShowAddForm(false);
   };
+// 이메일 백업 함수
 const sendBackupEmail = async () => {
   if (typeof window.emailjs === 'undefined') {
     alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
@@ -455,7 +449,8 @@ const sendBackupEmail = async () => {
             believer_count: Object.keys(data).length,
             backup_file: reader.result,
             file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
-          }
+          },
+          'l3rSK_9MelwbU0Mml'
         );
         
         console.log('✅ 백업 이메일 전송 성공:', result);
@@ -474,9 +469,9 @@ const sendBackupEmail = async () => {
   }
 };
 
-const handleInputChange = useCallback((e) => {
-  setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-}, []);
+  const handleInputChange = useCallback((e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
   
   // 이미지 압축 함수 - useCallback으로 최적화
   const compressImage = useCallback((file, maxWidth = 1200, quality = 0.8) => {
