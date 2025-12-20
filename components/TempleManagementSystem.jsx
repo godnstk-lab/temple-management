@@ -488,7 +488,7 @@ const sendSingleEmail = async (dataStr, dataSizeKB) => {
     reader.onload = async () => {
       try {
         const result = await window.emailjs.send(
-          'godnstk', 
+          'service_6mgqfka', 
           'template_9qyr7gk', 
           {
             to_email: 'godnstk@gmail.com',
