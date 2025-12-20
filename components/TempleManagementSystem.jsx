@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lock, LogOut, Plus, Trash2, Search, X } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, onValue } from 'firebase/database';
+import { getDatabase, ref, set, onValue, get } from 'firebase/database';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Firebase 설정
@@ -198,6 +198,13 @@ const [sortOrder, setSortOrder] = useState('asc');
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
+  // EmailJS 초기화
+useEffect(() => {
+  if (typeof window.emailjs !== 'undefined') {
+    window.emailjs.init('abcDEF123xyz');  // ← 여기에 Public Key 입력
+  }
+}, []);
+
   // 뒤로가기 처리 최적화
   const closeCurrentPopup = useCallback(() => {
     if (viewPhotoModal) {
@@ -330,6 +337,20 @@ const [sortOrder, setSortOrder] = useState('asc');
     viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, 
     showMonthlyDepositPopup, showPeriodDepositPopup, showViewPopup
   ]);
+  // 자동 백업 (매일 오전 2시)
+useEffect(() => {
+  if (userRole !== 'admin') return;
+  
+  const checkAutoBackup = setInterval(() => {
+    const now = new Date();
+    // 매일 오전 2시에 자동 백업
+    if (now.getHours() === 2 && now.getMinutes() === 0) {
+      sendBackupEmail();
+    }
+  }, 60000); // 1분마다 체크
+  
+  return () => clearInterval(checkAutoBackup);
+}, [userRole]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -394,6 +415,59 @@ const [sortOrder, setSortOrder] = useState('asc');
     setLoginPassword('');
     setShowAddForm(false);
   };
+// 이메일 백업 함수
+const sendBackupEmail = async () => {
+  if (typeof window.emailjs === 'undefined') {
+    alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
+    return;
+  }
+
+  try {
+    const believersRef = ref(database, 'believers');
+    const snapshot = await get(believersRef);
+    const data = snapshot.val();
+    
+    if (!data) {
+      alert('백업할 데이터가 없습니다.');
+      return;
+    }
+
+    alert('백업 준비 중... 잠시만 기다려주세요.');
+
+    const dataStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const reader = new FileReader();
+    
+    reader.onload = async () => {
+      try {
+        const result = await window.emailjs.send(
+          'service_abc1234', godnstk
+          'template_xyz5678', templates_9qyr7gk
+          {
+            to_email: 'your@gmail.com', godnstk@gmail.com
+            backup_date: new Date().toLocaleString('ko-KR'),
+            believer_count: Object.keys(data).length,
+            backup_file: reader.result,
+            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
+          },
+          'abcDEF123xyz' l3rSK_9MelwbU0Mml
+        );
+        
+        console.log('✅ 백업 이메일 전송 성공:', result);
+        alert('✅ 백업 이메일이 전송되었습니다!');
+      } catch (error) {
+        console.error('❌ 이메일 전송 실패:', error);
+        alert('❌ 이메일 전송 실패: ' + error.text);
+      }
+    };
+    
+    reader.readAsDataURL(blob);
+    
+  } catch (error) {
+    console.error('❌ 백업 실패:', error);
+    alert('❌ 백업 실패: ' + error.message);
+  }
+};
 
   const handleInputChange = useCallback((e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -981,6 +1055,15 @@ const [sortOrder, setSortOrder] = useState('asc');
                   <p className="text-amber-100 text-xs sm:text-sm mt-1">{userRole === 'admin' ? '관리자' : '일반 사용자'} 모드</p>
                 </div>
               </div>
+              {userRole === 'admin' && (
+  <button 
+    onClick={sendBackupEmail} 
+    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base mr-2"
+  >
+    <span className="text-lg">💾</span>
+    <span className="hidden sm:inline">이메일 백업</span>
+  </button>
+)}
               <button onClick={handleLogout} className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base">
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">로그아웃</span>
