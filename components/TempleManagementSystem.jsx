@@ -284,7 +284,7 @@ const [sortOrder, setSortOrder] = useState('asc');
     editBulsaPhotoPreviews, bulsaPhotoPreviews, photoPreviews
   ]);
 
-  useEffect(() => {
+ useEffect(() => {
   const handlePopState = () => {
     if (!isLoggedIn) return;
     closeCurrentPopup();
@@ -994,18 +994,7 @@ const [sortOrder, setSortOrder] = useState('asc');
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 sm:left-4 top-3 sm:top-4 w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
-                <input 
-  type="text" 
-  placeholder="이름, 전화번호, 불사내용으로 검색..." 
-  value={searchTerm} 
-  onChange={(e) => {
-    const value = e.target.value;
-    // 한글, 숫자, 공백만 허용
-    const filtered = value.replace(/[^\u3131-\u318E\uAC00-\uD7A3\u1100-\u11FF0-9\s]/g, '');
-    setSearchTerm(filtered);
-  }}
-  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" 
-/>
+                <input type="text" placeholder="이름, 전화번호, 불사내용으로 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
               </div>
               {userRole === 'admin' && (
                 <button onClick={() => { setShowAddForm(true); setFormData(emptyForm); setNewBulsaData(emptyBulsa); setPhotoFiles([]); setPhotoPreviews([]); }} className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all shadow-md whitespace-nowrap text-sm sm:text-base">
