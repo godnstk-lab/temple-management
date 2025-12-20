@@ -464,15 +464,15 @@ const sendBackupEmail = async () => {
     
     console.log(`📊 백업 파일 크기: ${dataSizeKB}KB`);
     
-    // 🆕 50KB보다 작으면? → 한 번에 전송
-    // 🆕 50KB보다 크면? → 나눠서 전송
-    if (dataSize <= 51200) {
-      console.log('✅ 50KB 이하 → 한 번에 전송합니다');
-      await sendSingleEmail(dataStr, dataSizeKB);
-    } else {
-      console.log('⚠️ 50KB 초과 → 여러 번 나눠서 전송합니다');
-      await sendChunkedEmails(data, dataSize, dataSizeKB);
-    }
+// 🆕 30KB보다 작으면? → 한 번에 전송
+// 🆕 30KB보다 크면? → 나눠서 전송
+if (dataSize <= 30720) {  // 30KB = 30,720 bytes
+  console.log('✅ 30KB 이하 → 한 번에 전송합니다');
+  await sendSingleEmail(dataStr, dataSizeKB);
+} else {
+  console.log('⚠️ 30KB 초과 → 여러 번 나눠서 전송합니다');
+  await sendChunkedEmails(data, dataSize, dataSizeKB);
+}
     
   } catch (error) {
     console.error('❌ 백업 실패:', error);
@@ -523,7 +523,10 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
   
   // 신도 몇 명씩 나눌지 계산
   const avgSizePerBeliever = totalSize / totalBelievers;
-  const believersPerChunk = Math.floor(51200 / avgSizePerBeliever);
+  
+  // 🆕 30KB로 변경 (base64 인코딩 + 추가 변수를 고려)
+  // 30KB × 1.33 (base64) = 약 40KB (안전 마진 10KB)
+  const believersPerChunk = Math.floor(30720 / avgSizePerBeliever);  // 30KB = 30,720 bytes
   const totalChunks = Math.ceil(totalBelievers / believersPerChunk);
   
   console.log(`📦 ${totalChunks}개로 나눠서 보냅니다`);
