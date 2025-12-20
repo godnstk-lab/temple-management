@@ -467,7 +467,7 @@ const sendBackupEmail = async () => {
     reader.onload = async () => {
       try {
         const result = await window.emailjs.send(
-          'service_godnstk', 
+          'godnstk', 
           'template_9qyr7gk', 
           {
             to_email: 'godnstk@gmail.com',
