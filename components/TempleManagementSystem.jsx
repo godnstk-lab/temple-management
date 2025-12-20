@@ -198,18 +198,37 @@ const [sortOrder, setSortOrder] = useState('asc');
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
- useEffect(() => {
-  const initEmailJS = () => {
-    if (typeof window.emailjs !== 'undefined') {
+// EmailJS 초기화 - 기존 코드 삭제하고 아래로 교체
+useEffect(() => {
+  // EmailJS 스크립트 동적 로드
+  const loadEmailJS = () => {
+    // 이미 로드되어 있는지 확인
+    if (window.emailjs) {
       window.emailjs.init('l3rSK_9MelwbU0Mml');
       console.log('✅ EmailJS 초기화 완료');
-    } else {
-      console.log('⏳ EmailJS 로딩 대기 중...');
-      setTimeout(initEmailJS, 100); // 100ms 후 다시 시도
+      return;
     }
+
+    // 스크립트 태그 생성
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+    script.async = true;
+    
+    script.onload = () => {
+      if (window.emailjs) {
+        window.emailjs.init('l3rSK_9MelwbU0Mml');
+        console.log('✅ EmailJS 스크립트 로드 및 초기화 완료');
+      }
+    };
+    
+    script.onerror = () => {
+      console.error('❌ EmailJS 스크립트 로드 실패');
+    };
+    
+    document.head.appendChild(script);
   };
-  
-  initEmailJS();
+
+  loadEmailJS();
 }, []);
 
   // 뒤로가기 처리 최적화
