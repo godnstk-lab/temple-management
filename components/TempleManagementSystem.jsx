@@ -422,13 +422,7 @@ useEffect(() => {
     setLoginPassword('');
     setShowAddForm(false);
   };
-// 이메일 백업 함수
 const sendBackupEmail = async () => {
-  if (typeof window.emailjs === 'undefined') {
-    alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-    return;
-  }
-
   try {
     const believersRef = ref(database, 'believers');
     const snapshot = await get(believersRef);
@@ -439,9 +433,15 @@ const sendBackupEmail = async () => {
       return;
     }
 
-    alert('백업 준비 중... 잠시만 기다려주세요.');
-
     const dataStr = JSON.stringify(data, null, 2);
+    const dataSizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
+    
+    alert(`데이터 크기:\n${dataSizeKB} KB\n신도: ${Object.keys(data).length}명\n제한: 50 KB`);
+    
+  } catch (error) {
+    alert('오류: ' + error.message);
+  }
+};
     const blob = new Blob([dataStr], { type: 'application/json' });
     const reader = new FileReader();
     
