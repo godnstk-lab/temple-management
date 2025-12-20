@@ -201,7 +201,7 @@ const [sortOrder, setSortOrder] = useState('asc');
   // EmailJS 초기화
 useEffect(() => {
   if (typeof window.emailjs !== 'undefined') {
-    window.emailjs.init('abcDEF123xyz');  // ← 여기에 Public Key 입력
+    window.emailjs.init('l3rSK_9MelwbU0Mml');
   }
 }, []);
 
@@ -441,16 +441,16 @@ const sendBackupEmail = async () => {
     reader.onload = async () => {
       try {
         const result = await window.emailjs.send(
-          'service_abc1234', godnstk
-          'template_xyz5678', templates_9qyr7gk
+          'service_godnstk', 
+          'template_9qyr7gk', 
           {
-            to_email: 'your@gmail.com', godnstk@gmail.com
+            to_email: 'godnstk@gmail.com',
             backup_date: new Date().toLocaleString('ko-KR'),
             believer_count: Object.keys(data).length,
             backup_file: reader.result,
             file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
           },
-          'abcDEF123xyz' l3rSK_9MelwbU0Mml
+          'l3rSK_9MelwbU0Mml'
         );
         
         console.log('✅ 백업 이메일 전송 성공:', result);
