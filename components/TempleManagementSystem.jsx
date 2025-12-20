@@ -443,11 +443,6 @@ useEffect(() => {
   };
 // 이메일 백업 함수
 const sendBackupEmail = async () => {
-  if (typeof window.emailjs === 'undefined') {
-    alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-    return;
-  }
-
   try {
     const believersRef = ref(database, 'believers');
     const snapshot = await get(believersRef);
@@ -458,26 +453,15 @@ const sendBackupEmail = async () => {
       return;
     }
 
-    alert('백업 준비 중... 잠시만 기다려주세요.');
-
     const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const reader = new FileReader();
+    const dataSizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
     
-    reader.onload = async () => {
-      try {
-        const result = await window.emailjs.send(
-          'godnstk', 
-          'template_9qyr7gk', 
-          {
-            to_email: 'godnstk@gmail.com',
-            backup_date: new Date().toLocaleString('ko-KR'),
-            believer_count: Object.keys(data).length,
-            backup_file: reader.result,
-            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
-          },
-          'l3rSK_9MelwbU0Mml'
-        );
+    alert(`데이터 크기:\n${dataSizeKB} KB\n신도: ${Object.keys(data).length}명\n제한: 50 KB`);
+    
+  } catch (error) {
+    alert('오류: ' + error.message);
+  }
+};
         
         console.log('✅ 백업 이메일 전송 성공:', result);
         alert('✅ 백업 이메일이 전송되었습니다!');
