@@ -423,58 +423,6 @@ useEffect(() => {
     setShowAddForm(false);
   };
 const sendBackupEmail = async () => {
-  try {
-    const believersRef = ref(database, 'believers');
-    const snapshot = await get(believersRef);
-    const data = snapshot.val();
-    
-    if (!data) {
-      alert('백업할 데이터가 없습니다.');
-      return;
-    }
-
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataSizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
-    
-    alert(`데이터 크기:\n${dataSizeKB} KB\n신도: ${Object.keys(data).length}명\n제한: 50 KB`);
-    
-  } catch (error) {
-    alert('오류: ' + error.message);
-  }
-};
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const reader = new FileReader();
-    
-    reader.onload = async () => {
-      try {
-        const result = await window.emailjs.send(
-          'godnstk', 
-          'template_9qyr7gk', 
-          {
-            to_email: 'godnstk@gmail.com',
-            backup_date: new Date().toLocaleString('ko-KR'),
-            believer_count: Object.keys(data).length,
-            backup_file: reader.result,
-            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
-          },
-          'l3rSK_9MelwbU0Mml'
-        );
-        
-        console.log('✅ 백업 이메일 전송 성공:', result);
-        alert('✅ 백업 이메일이 전송되었습니다!');
-      } catch (error) {
-        console.error('❌ 이메일 전송 실패:', error);
-        alert('❌ 이메일 전송 실패: ' + error.text);
-      }
-    };
-    
-    reader.readAsDataURL(blob);
-    
-  } catch (error) {
-    console.error('❌ 백업 실패:', error);
-    alert('❌ 백업 실패: ' + error.message);
-  }
-};
 
   const handleInputChange = useCallback((e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
