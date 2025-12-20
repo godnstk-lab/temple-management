@@ -198,11 +198,18 @@ const [sortOrder, setSortOrder] = useState('asc');
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  // EmailJS 초기화
-useEffect(() => {
-  if (typeof window.emailjs !== 'undefined') {
-    window.emailjs.init('l3rSK_9MelwbU0Mml');
-  }
+ useEffect(() => {
+  const initEmailJS = () => {
+    if (typeof window.emailjs !== 'undefined') {
+      window.emailjs.init('l3rSK_9MelwbU0Mml');
+      console.log('✅ EmailJS 초기화 완료');
+    } else {
+      console.log('⏳ EmailJS 로딩 대기 중...');
+      setTimeout(initEmailJS, 100); // 100ms 후 다시 시도
+    }
+  };
+  
+  initEmailJS();
 }, []);
 
   // 뒤로가기 처리 최적화
