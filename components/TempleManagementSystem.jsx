@@ -200,9 +200,32 @@ const [sortOrder, setSortOrder] = useState('asc');
 
   // EmailJS 초기화
 useEffect(() => {
-  if (typeof window.emailjs !== 'undefined') {
-    window.emailjs.init('l3rSK_9MelwbU0Mml');
-  }
+  const loadEmailJS = () => {
+    if (window.emailjs) {
+      console.log('✅ EmailJS 준비됨');
+      window.emailjs.init('l3rSK_9MelwbU0Mml');
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+    script.async = true;
+    
+    script.onload = () => {
+      console.log('✅ EmailJS 로드 완료');
+      if (window.emailjs) {
+        window.emailjs.init('l3rSK_9MelwbU0Mml');
+      }
+    };
+    
+    script.onerror = () => {
+      console.error('❌ EmailJS 로드 실패');
+    };
+    
+    document.body.appendChild(script);
+  };
+
+  loadEmailJS();
 }, []);
 
   // 뒤로가기 처리 최적화
