@@ -415,7 +415,7 @@ useEffect(() => {
     setLoginPassword('');
     setShowAddForm(false);
   };
-// 이메일 백업 함수
+
 const sendBackupEmail = async () => {
   if (typeof window.emailjs === 'undefined') {
     alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
@@ -434,10 +434,34 @@ const sendBackupEmail = async () => {
 
     alert('백업 준비 중... 잠시만 기다려주세요.');
 
+    // 🆕 파일 크기 확인
     const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const reader = new FileReader();
+    const dataSize = new Blob([dataStr]).size;
+    const dataSizeKB = (dataSize / 1024).toFixed(2);
     
+    console.log(`📊 백업 파일 크기: ${dataSizeKB}KB`);
+    
+    // 🆕 50KB보다 작으면? → 한 번에 전송
+    // 🆕 50KB보다 크면? → 나눠서 전송
+    if (dataSize <= 51200) {
+      console.log('✅ 50KB 이하 → 한 번에 전송합니다');
+      await sendSingleEmail(dataStr, dataSizeKB);
+    } else {
+      console.log('⚠️ 50KB 초과 → 여러 번 나눠서 전송합니다');
+      await sendChunkedEmails(data, dataSize, dataSizeKB);
+    }
+    
+  } catch (error) {
+    console.error('❌ 백업 실패:', error);
+    alert('❌ 백업 실패: ' + error.message);
+  }
+};
+
+const sendSingleEmail = async (dataStr, dataSizeKB) => {
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const reader = new FileReader();
+  
+  return new Promise((resolve, reject) => {
     reader.onload = async () => {
       try {
         const result = await window.emailjs.send(
@@ -446,27 +470,103 @@ const sendBackupEmail = async () => {
           {
             to_email: 'godnstk@gmail.com',
             backup_date: new Date().toLocaleString('ko-KR'),
-            believer_count: Object.keys(data).length,
+            believer_count: Object.keys(JSON.parse(dataStr)).length,
             backup_file: reader.result,
-            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
+            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`,
+            file_size: `${dataSizeKB}KB`,
+            part_info: '전체 (1/1)'
           },
           'l3rSK_9MelwbU0Mml'
         );
         
-        console.log('✅ 백업 이메일 전송 성공:', result);
-        alert('✅ 백업 이메일이 전송되었습니다!');
+        console.log('✅ 이메일 전송 완료!');
+        alert(`✅ 백업 완료! (${dataSizeKB}KB)`);
+        resolve(result);
       } catch (error) {
-        console.error('❌ 이메일 전송 실패:', error);
+        console.error('❌ 전송 실패:', error);
         alert('❌ 이메일 전송 실패: ' + error.text);
+        reject(error);
       }
     };
     
+    reader.onerror = reject;
     reader.readAsDataURL(blob);
+  });
+};
+
+const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
+  const believers = Object.entries(data);
+  const totalBelievers = believers.length;
+  
+  // 신도 몇 명씩 나눌지 계산
+  const avgSizePerBeliever = totalSize / totalBelievers;
+  const believersPerChunk = Math.floor(51200 / avgSizePerBeliever);
+  const totalChunks = Math.ceil(totalBelievers / believersPerChunk);
+  
+  console.log(`📦 ${totalChunks}개로 나눠서 보냅니다`);
+  alert(`파일이 커서 ${totalChunks}개의 이메일로 나눠서 보냅니다`);
+  
+  // 여러 번 나눠서 전송
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * believersPerChunk;
+    const end = Math.min(start + believersPerChunk, totalBelievers);
     
-  } catch (error) {
-    console.error('❌ 백업 실패:', error);
-    alert('❌ 백업 실패: ' + error.message);
+    const chunkBelievers = believers.slice(start, end);
+    const chunkData = Object.fromEntries(chunkBelievers);
+    const chunkStr = JSON.stringify(chunkData, null, 2);
+    const chunkSize = new Blob([chunkStr]).size;
+    const chunkSizeKB = (chunkSize / 1024).toFixed(2);
+    
+    console.log(`📤 ${i + 1}번째 이메일 보내는 중... (${chunkSizeKB}KB)`);
+    
+    try {
+      const blob = new Blob([chunkStr], { type: 'application/json' });
+      const reader = new FileReader();
+      
+      await new Promise((resolve, reject) => {
+        reader.onload = async () => {
+          try {
+            const result = await window.emailjs.send(
+              'godnstk', 
+              'template_9qyr7gk', 
+              {
+                to_email: 'godnstk@gmail.com',
+                backup_date: new Date().toLocaleString('ko-KR'),
+                believer_count: chunkBelievers.length,
+                backup_file: reader.result,
+                file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}_파트${i + 1}_of_${totalChunks}.json`,
+                file_size: `${chunkSizeKB}KB`,
+                part_info: `${i + 1}/${totalChunks}번째`
+              },
+              'l3rSK_9MelwbU0Mml'
+            );
+            
+            console.log(`✅ ${i + 1}번째 전송 완료`);
+            resolve(result);
+          } catch (error) {
+            console.error(`❌ ${i + 1}번째 전송 실패:`, error);
+            reject(error);
+          }
+        };
+        
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      // 다음 이메일 보내기 전 2초 쉬기
+      if (i < totalChunks - 1) {
+        console.log('⏳ 2초 쉬는 중...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+    } catch (error) {
+      console.error(`❌ ${i + 1}번째 오류:`, error);
+      alert(`❌ ${i + 1}번째 전송 실패`);
+    }
   }
+  
+  alert(`✅ 완료! ${totalChunks}개 이메일 모두 전송했어요`);
+  console.log(`✅ 백업 완료: ${totalChunks}개, 총 ${totalSizeKB}KB`);
 };
 
   const handleInputChange = useCallback((e) => {
