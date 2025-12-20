@@ -198,39 +198,20 @@ const [sortOrder, setSortOrder] = useState('asc');
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-// EmailJS 초기화 - 기존 코드 삭제하고 아래로 교체
+ // EmailJS 초기화 - 수정된 코드
 useEffect(() => {
-  // EmailJS 스크립트 동적 로드
-  const loadEmailJS = () => {
-    // 이미 로드되어 있는지 확인
-    if (window.emailjs) {
+  const initEmailJS = () => {
+    if (typeof window.emailjs !== 'undefined') {
       window.emailjs.init('l3rSK_9MelwbU0Mml');
       console.log('✅ EmailJS 초기화 완료');
-      return;
+    } else {
+      console.log('⏳ EmailJS 로딩 대기 중...');
+      setTimeout(initEmailJS, 100); // 100ms 후 다시 시도
     }
-
-    // 스크립트 태그 생성
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-    script.async = true;
-    
-    script.onload = () => {
-      if (window.emailjs) {
-        window.emailjs.init('l3rSK_9MelwbU0Mml');
-        console.log('✅ EmailJS 스크립트 로드 및 초기화 완료');
-      }
-    };
-    
-    script.onerror = () => {
-      console.error('❌ EmailJS 스크립트 로드 실패');
-    };
-    
-    document.head.appendChild(script);
   };
-
-  loadEmailJS();
+  
+  initEmailJS();
 }, []);
-
   // 뒤로가기 처리 최적화
   const closeCurrentPopup = useCallback(() => {
     if (viewPhotoModal) {
@@ -443,6 +424,11 @@ useEffect(() => {
   };
 // 이메일 백업 함수
 const sendBackupEmail = async () => {
+  if (typeof window.emailjs === 'undefined') {
+    alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
+    return;
+  }
+
   try {
     const believersRef = ref(database, 'believers');
     const snapshot = await get(believersRef);
@@ -453,15 +439,26 @@ const sendBackupEmail = async () => {
       return;
     }
 
+    alert('백업 준비 중... 잠시만 기다려주세요.');
+
     const dataStr = JSON.stringify(data, null, 2);
-    const dataSizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const reader = new FileReader();
     
-    alert(`데이터 크기:\n${dataSizeKB} KB\n신도: ${Object.keys(data).length}명\n제한: 50 KB`);
-    
-  } catch (error) {
-    alert('오류: ' + error.message);
-  }
-};
+    reader.onload = async () => {
+      try {
+        const result = await window.emailjs.send(
+          'godnstk', 
+          'template_9qyr7gk', 
+          {
+            to_email: 'godnstk@gmail.com',
+            backup_date: new Date().toLocaleString('ko-KR'),
+            believer_count: Object.keys(data).length,
+            backup_file: reader.result,
+            file_name: `해운사_백업_${new Date().toISOString().slice(0,10)}.json`
+          },
+          'l3rSK_9MelwbU0Mml'
+        );
         
         console.log('✅ 백업 이메일 전송 성공:', result);
         alert('✅ 백업 이메일이 전송되었습니다!');
