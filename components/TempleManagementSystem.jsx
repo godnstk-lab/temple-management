@@ -360,20 +360,6 @@ useEffect(() => {
     viewPhotoModal, showBulsaDeleteConfirm, showDepositDeleteConfirm, 
     showMonthlyDepositPopup, showPeriodDepositPopup, showViewPopup
   ]);
-  // 자동 백업 (매일 오전 2시)
-useEffect(() => {
-  if (userRole !== 'admin') return;
-  
-  const checkAutoBackup = setInterval(() => {
-    const now = new Date();
-    // 매일 오전 2시에 자동 백업
-    if (now.getHours() === 2 && now.getMinutes() === 0) {
-      sendBackupEmail();
-    }
-  }, 60000); // 1분마다 체크
-  
-  return () => clearInterval(checkAutoBackup);
-}, [userRole]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -420,17 +406,53 @@ useEffect(() => {
     }
   };
 
+  // 🆕 로그인 시 자동 백업 체크 함수
+const checkAndSendAutoBackup = () => {
+  // localStorage에서 마지막 백업 날짜 확인
+  const lastBackupDate = localStorage.getItem('lastBackupDate');
+  const today = new Date();
+  
+  // 오늘 날짜를 "2024-12-21" 형식으로 변환
+  const todayString = today.toISOString().split('T')[0];
+  
+  // 새벽 2시 기준으로 날짜 계산
+  const adjustedDate = new Date(today);
+  if (today.getHours() < 2) {
+    // 오전 2시 이전이면 어제로 간주
+    adjustedDate.setDate(adjustedDate.getDate() - 1);
+  }
+  const adjustedDateString = adjustedDate.toISOString().split('T')[0];
+  
+  console.log('📅 마지막 백업 날짜:', lastBackupDate);
+  console.log('📅 오늘 날짜 (조정됨):', adjustedDateString);
+  
+  // 오늘 아직 백업 안 했으면 백업 실행
+  if (lastBackupDate !== adjustedDateString) {
+    console.log('✅ 오늘 첫 로그인! 자동 백업 시작...');
+    
+    // 백업 실행
+    sendBackupEmail();
+    
+    // 마지막 백업 날짜 저장
+    localStorage.setItem('lastBackupDate', adjustedDateString);
+  } else {
+    console.log('ℹ️ 오늘 이미 백업했습니다. 스킵!');
+  }
+};
   const handleLogin = () => {
-    if (loginPassword === '0804') {
-      setIsLoggedIn(true);
-      setUserRole('admin');
-    } else if (loginPassword === '1023') {
-      setIsLoggedIn(true);
-      setUserRole('user');
-    } else {
-      alert('비밀번호가 올바르지 않습니다.');
-    }
-  };
+  if (loginPassword === '0804') {
+    setIsLoggedIn(true);
+    setUserRole('admin');
+
+    // 🆕 관리자 로그인 시 자동 백업 체크
+    checkAndSendAutoBackup();
+  } else if (loginPassword === '1023') {
+    setIsLoggedIn(true);
+    setUserRole('user');
+  } else {
+    alert('비밀번호가 올바르지 않습니다.');
+  }
+};
 
   const handleLogout = () => {
     setIsLoggedIn(false);
