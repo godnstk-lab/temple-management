@@ -432,6 +432,7 @@ const checkAndSendAutoBackup = () => {
     
     // 백업 실행
     sendBackupEmail();
+sendGoogleDriveBackup();
     
     // 마지막 백업 날짜 저장
     localStorage.setItem('lastBackupDate', adjustedDateString);
@@ -460,7 +461,60 @@ const checkAndSendAutoBackup = () => {
     setLoginPassword('');
     setShowAddForm(false);
   };
+// 🆕 Google Drive 백업 함수
+const sendGoogleDriveBackup = async () => {
+  try {
+    alert('Google Drive 백업 시작...');
+    
+    const believersRef = ref(database, 'believers');
+    const snapshot = await get(believersRef);
+    const data = snapshot.val();
+    
+    if (!data) {
+      alert('백업할 데이터가 없습니다.');
+      return;
+    }
 
+    // 모든 사진 URL 수집
+    const photoURLs = [];
+    Object.values(data).forEach(believer => {
+      if (believer.bulsa && believer.bulsa.length > 0) {
+        believer.bulsa.forEach(bulsa => {
+          if (bulsa.photoURLs && bulsa.photoURLs.length > 0) {
+            photoURLs.push(...bulsa.photoURLs);
+          }
+        });
+      }
+    });
+
+    console.log(`📊 백업 데이터: 신도 ${Object.keys(data).length}명, 사진 ${photoURLs.length}장`);
+
+    // 🔑 Google Apps Script URL (여기에 실제 URL 입력!)
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
+    
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        backupData: data,
+        photoURLs: photoURLs,
+        timestamp: new Date().toISOString(),
+        believerCount: Object.keys(data).length,
+        photoCount: photoURLs.length
+      })
+    });
+
+    console.log('✅ Google Drive 백업 완료!');
+    alert(`✅ Google Drive 백업 완료!\n신도: ${Object.keys(data).length}명\n사진: ${photoURLs.length}장`);
+    
+  } catch (error) {
+    console.error('❌ Google Drive 백업 실패:', error);
+    alert('❌ Google Drive 백업 실패: ' + error.message);
+  }
+};
 const sendBackupEmail = async () => {
   if (typeof window.emailjs === 'undefined') {
     alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
