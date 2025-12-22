@@ -408,36 +408,33 @@ useEffect(() => {
 
   // 🆕 로그인 시 자동 백업 체크 함수
 const checkAndSendAutoBackup = () => {
-  // localStorage에서 마지막 백업 날짜 확인
   const lastBackupDate = localStorage.getItem('lastBackupDate');
   const today = new Date();
   
-  // 오늘 날짜를 "2024-12-21" 형식으로 변환
-  const todayString = today.toISOString().split('T')[0];
+  // 이번 주의 시작일 (일요일) 계산
+  const dayOfWeek = today.getDay(); // 0 = 일요일, 1 = 월요일, ...
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(today.getDate() - dayOfWeek); // 이번 주 일요일
+  thisWeekStart.setHours(0, 0, 0, 0); // 자정으로 설정
   
-  // 새벽 2시 기준으로 날짜 계산
-  const adjustedDate = new Date(today);
-  if (today.getHours() < 2) {
-    // 오전 2시 이전이면 어제로 간주
-    adjustedDate.setDate(adjustedDate.getDate() - 1);
-  }
-  const adjustedDateString = adjustedDate.toISOString().split('T')[0];
+  const thisWeekStartString = thisWeekStart.toISOString().split('T')[0];
   
   console.log('📅 마지막 백업 날짜:', lastBackupDate);
-  console.log('📅 오늘 날짜 (조정됨):', adjustedDateString);
+  console.log('📅 이번 주 시작일:', thisWeekStartString);
   
-  // 오늘 아직 백업 안 했으면 백업 실행
-  if (lastBackupDate !== adjustedDateString) {
-    console.log('✅ 오늘 첫 로그인! 자동 백업 시작...');
+  // 마지막 백업이 이번 주 이전이면 백업 실행
+  if (!lastBackupDate || lastBackupDate < thisWeekStartString) {
+    console.log('✅ 이번 주 첫 로그인! 자동 백업 시작...');
     
     // 백업 실행
     sendBackupEmail();
-sendGoogleDriveBackup();
+    sendGoogleDriveBackup();
     
-    // 마지막 백업 날짜 저장
-    localStorage.setItem('lastBackupDate', adjustedDateString);
+    // 오늘 날짜로 백업 날짜 저장
+    const todayString = today.toISOString().split('T')[0];
+    localStorage.setItem('lastBackupDate', todayString);
   } else {
-    console.log('ℹ️ 오늘 이미 백업했습니다. 스킵!');
+    console.log('ℹ️ 이번 주 이미 백업했습니다. 스킵!');
   }
 };
   const handleLogin = () => {
