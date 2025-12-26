@@ -836,7 +836,22 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
   
   const getTotalBulsaAmount = useCallback((bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0), []);
   const getTotalDepositAmount = useCallback((deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0), []);
-
+const toggleBulsaTemple = async (believerId, bulsaIndex) => {
+  const updatedBelievers = believers.map(b => {
+    if (b.id === believerId) {
+      const newBulsa = [...b.bulsa];
+      newBulsa[bulsaIndex] = {
+        ...newBulsa[bulsaIndex],
+        isTemple: !newBulsa[bulsaIndex].isTemple
+      };
+      return { ...b, bulsa: newBulsa };
+    }
+    return b;
+  });
+  setBelievers(updatedBelievers);
+  await saveBelievers(updatedBelievers);
+  setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
+};
   const handleAddBeliever = async () => {
     if (!formData.name || !formData.phone) {
       alert('이름과 전화번호는 필수입니다.');
@@ -1586,11 +1601,21 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
                           {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                         </div>
                         {userRole === 'admin' && (
-                          <div className="flex gap-2">
-                            <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
-                            <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
-                          </div>
-                        )}
+  <div className="flex gap-2 items-center">
+    {/* 절 체크박스 */}
+    <label className="flex items-center gap-1 cursor-pointer bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-lg border-2 border-purple-300 transition-colors">
+      <input
+        type="checkbox"
+        checked={b.isTemple || false}
+        onChange={() => toggleBulsaTemple(selectedBeliever.id, idx)}
+        className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+      />
+      <span className="text-sm font-bold text-purple-700">절</span>
+    </label>
+    <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
+    <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
+  </div>
+)}
                       </div>
                       {b.photoURLs && b.photoURLs.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-2">
