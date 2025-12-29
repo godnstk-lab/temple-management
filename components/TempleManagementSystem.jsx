@@ -597,18 +597,21 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
   // 신도 몇 명씩 나눌지 계산
   const avgSizePerBeliever = totalSize / totalBelievers;
   
-  // 🆕 30KB로 변경 (base64 인코딩 + 추가 변수를 고려)
-  // 30KB × 1.33 (base64) = 약 40KB (안전 마진 10KB)
-  const believersPerChunk = Math.floor(30720 / avgSizePerBeliever);  // 30KB = 30,720 bytes
-  const totalChunks = Math.ceil(totalBelievers / believersPerChunk);
+  // 🆕 20KB로 변경 (더 안전한 크기)
+  // 20KB × 1.33 (base64) = 약 26.6KB (안전 마진 충분)
+  const believersPerChunk = Math.floor(20480 / avgSizePerBeliever);  // 20KB = 20,480 bytes
+  
+  // 최소 1명은 보내도록 보장
+  const safeChunkSize = Math.max(1, believersPerChunk);
+  const totalChunks = Math.ceil(totalBelievers / safeChunkSize);
   
   console.log(`📦 ${totalChunks}개로 나눠서 보냅니다`);
   alert(`파일이 커서 ${totalChunks}개의 이메일로 나눠서 보냅니다`);
   
   // 여러 번 나눠서 전송
   for (let i = 0; i < totalChunks; i++) {
-    const start = i * believersPerChunk;
-    const end = Math.min(start + believersPerChunk, totalBelievers);
+  const start = i * safeChunkSize;
+  const end = Math.min(start + safeChunkSize, totalBelievers);
     
     const chunkBelievers = believers.slice(start, end);
     const chunkData = Object.fromEntries(chunkBelievers);
