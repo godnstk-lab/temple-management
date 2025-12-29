@@ -1080,29 +1080,33 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
     setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
   };
 
-  const filteredBelievers = useMemo(() => {
-    return believers.filter(b => {
-      if (!searchTerm) return true;
-      const searchParts = searchTerm.trim().split(/\s+/);
-      const sizeKeywords = [];
-      let textSearchParts = [];
-      searchParts.forEach(part => {
-        const lowerPart = part.toLowerCase();
-        if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
-          sizeKeywords.push(part);
-        } else {
-          textSearchParts.push(part);
-        }
-      });
-      const allTextMatches = textSearchParts.every(searchWord => {
-        const lowerSearchWord = searchWord.toLowerCase();
-        const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
-        const phoneMatch = (b.phone || '').includes(searchWord);
-        const bulsaContentMatch = (b.bulsa || []).some(item => 
-          (item.content || '').toLowerCase().includes(lowerSearchWord)
-        );
-        return nameMatch || phoneMatch || bulsaContentMatch;
-      });
+ const filteredBelievers = useMemo(() => {
+  return believers.filter(b => {
+    if (!searchTerm) return true;
+    const searchParts = searchTerm.trim().split(/\s+/);
+    const sizeKeywords = [];
+    let textSearchParts = [];
+    searchParts.forEach(part => {
+      const lowerPart = part.toLowerCase();
+      if (lowerPart === '소' || lowerPart === '중' || lowerPart === '대') {
+        sizeKeywords.push(part);
+      } else {
+        textSearchParts.push(part);
+      }
+    });
+    const allTextMatches = textSearchParts.every(searchWord => {
+      const lowerSearchWord = searchWord.toLowerCase();
+      const nameMatch = (b.name || '').toLowerCase().includes(lowerSearchWord);
+      const phoneMatch = (b.phone || '').includes(searchWord);
+      const bulsaContentMatch = (b.bulsa || []).some(item => 
+        (item.content || '').toLowerCase().includes(lowerSearchWord)
+      );
+      // 🆕 봉안자/복위자 검색 추가
+      const bulsaPersonMatch = (b.bulsa || []).some(item => 
+        (item.person || '').toLowerCase().includes(lowerSearchWord)
+      );
+      return nameMatch || phoneMatch || bulsaContentMatch || bulsaPersonMatch;
+    });
       if (sizeKeywords.length === 0) {
         return allTextMatches;
       }
