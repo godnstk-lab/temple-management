@@ -1318,12 +1318,15 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
               </div>
               {userRole === 'admin' && (
   <button 
-    onClick={sendBackupEmail} 
-    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base mr-2"
-  >
-    <span className="text-lg">💾</span>
-    <span className="hidden sm:inline">이메일 백업</span>
-  </button>
+  onClick={() => {
+    sendBackupEmail();
+    sendGoogleDriveBackup();  // ← Google Drive도 추가!
+  }}
+  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base mr-2"
+>
+  <span className="text-lg">💾</span>
+  <span className="hidden sm:inline">이메일 백업</span>
+</button>
 )}
               <button onClick={handleLogout} className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base">
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
