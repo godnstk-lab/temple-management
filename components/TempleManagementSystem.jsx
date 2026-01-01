@@ -407,7 +407,7 @@ useEffect(() => {
   };
 
   // 🆕 로그인 시 자동 백업 체크 함수
-const checkAndSendAutoBackup = () => {
+const checkAndSendAutoBackup = async () => {
   const lastBackupDate = localStorage.getItem('lastBackupDate');
   const today = new Date();
   
@@ -426,9 +426,9 @@ const checkAndSendAutoBackup = () => {
   if (!lastBackupDate || lastBackupDate < thisWeekStartString) {
     console.log('✅ 이번 주 첫 로그인! 자동 백업 시작...');
     
-    // 백업 실행
-    sendBackupEmail();
-    sendGoogleDriveBackup();
+     // 🆕 순차 실행!
+    await sendBackupEmail();        // 1️⃣ 먼저 이메일
+    await sendGoogleDriveBackup();  // 2️⃣ 그 다음 Google Drive
     
     // 오늘 날짜로 백업 날짜 저장
     const todayString = today.toISOString().split('T')[0];
@@ -437,13 +437,13 @@ const checkAndSendAutoBackup = () => {
     console.log('ℹ️ 이번 주 이미 백업했습니다. 스킵!');
   }
 };
-  const handleLogin = () => {
+  const handleLogin = async () => {
   if (loginPassword === '0804') {
     setIsLoggedIn(true);
     setUserRole('admin');
 
     // 🆕 관리자 로그인 시 자동 백업 체크
-    checkAndSendAutoBackup();
+    await checkAndSendAutoBackup();
   } else if (loginPassword === '1023') {
     setIsLoggedIn(true);
     setUserRole('user');
@@ -1336,9 +1336,10 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
               {userRole === 'admin' && (
   <div className="flex gap-2">
     <button 
-      onClick={() => {
-        sendBackupEmail();
-        sendGoogleDriveBackup();
+      onClick={async () => {
+        // 🆕 순차 실행!
+        await sendBackupEmail();        // 1️⃣ 먼저 이메일 (완료될 때까지 대기)
+        await sendGoogleDriveBackup();  // 2️⃣ 그 다음 Google Drive
       }}
       className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base"
     >
