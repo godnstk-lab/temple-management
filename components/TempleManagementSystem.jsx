@@ -459,6 +459,9 @@ const checkAndSendAutoBackup = () => {
     setShowAddForm(false);
   };
 // 🆕 Google Drive 백업 함수
+// 🎯 중복 사진 방지 백업 시스템
+// 이미 백업한 사진은 건너뛰고, 새 사진만 Google Drive에 저장
+
 const sendGoogleDriveBackup = async () => {
   try {
     alert('Google Drive 백업 시작...');
@@ -472,23 +475,38 @@ const sendGoogleDriveBackup = async () => {
       return;
     }
 
-    // 모든 사진 URL 수집
-    const photoURLs = [];
+    // 1️⃣ 모든 사진 URL 수집
+    const allPhotoURLs = [];
     Object.values(data).forEach(believer => {
       if (believer.bulsa && believer.bulsa.length > 0) {
         believer.bulsa.forEach(bulsa => {
           if (bulsa.photoURLs && bulsa.photoURLs.length > 0) {
-            photoURLs.push(...bulsa.photoURLs);
+            bulsa.photoURLs.forEach(photoData => {
+              const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
+              allPhotoURLs.push(originalUrl);
+            });
           }
         });
       }
     });
 
-    console.log(`📊 백업 데이터: 신도 ${Object.keys(data).length}명, 사진 ${photoURLs.length}장`);
+    // 2️⃣ localStorage에서 이미 백업한 사진 목록 가져오기
+    const backedUpPhotos = JSON.parse(localStorage.getItem('backedUpPhotos') || '[]');
+    
+    // 3️⃣ 새로운 사진만 필터링 (이미 백업한 사진 제외)
+    const newPhotos = allPhotoURLs.filter(url => !backedUpPhotos.includes(url));
+    
+    console.log(`📊 전체 사진: ${allPhotoURLs.length}장`);
+    console.log(`✅ 이미 백업: ${backedUpPhotos.length}장`);
+    console.log(`🆕 새로운 사진: ${newPhotos.length}장`);
 
-    // 🔑 Google Apps Script URL (여기에 실제 URL 입력!)
+    // 4️⃣ 백업 파일명 생성
+    const timestamp = new Date();
+    const fileName = `해운사_백업_${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}-${String(timestamp.getMinutes()).padStart(2, '0')}-${String(timestamp.getSeconds()).padStart(2, '0')}.json`;
+
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
     
+    // 5️⃣ 백업 실행 (새 사진 URL만 전송)
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
@@ -497,21 +515,43 @@ const sendGoogleDriveBackup = async () => {
       },
       body: JSON.stringify({
         backupData: data,
-        photoURLs: photoURLs,
-        timestamp: new Date().toISOString(),
+        fileName: fileName,
+        newPhotoURLs: newPhotos,  // 🆕 새로운 사진 URL만 전송
+        timestamp: timestamp.toISOString(),
         believerCount: Object.keys(data).length,
-        photoCount: photoURLs.length
+        totalPhotoCount: allPhotoURLs.length,
+        newPhotoCount: newPhotos.length,
+        alreadyBackedUpCount: backedUpPhotos.length
       })
     });
 
+    // 6️⃣ 백업 완료 후 localStorage 업데이트 (새 사진을 백업 목록에 추가)
+    const updatedBackedUpPhotos = [...new Set([...backedUpPhotos, ...newPhotos])];
+    localStorage.setItem('backedUpPhotos', JSON.stringify(updatedBackedUpPhotos));
+
     console.log('✅ Google Drive 백업 완료!');
-    alert(`✅ Google Drive 백업 완료!\n신도: ${Object.keys(data).length}명\n사진: ${photoURLs.length}장`);
+    alert(
+      `✅ Google Drive 백업 완료!\n\n` +
+      `📊 전체 사진: ${allPhotoURLs.length}장\n` +
+      `🆕 새로 백업: ${newPhotos.length}장\n` +
+      `✓ 이미 백업됨: ${backedUpPhotos.length}장\n\n` +
+      `💡 중복 사진은 건너뛰었습니다!`
+    );
     
   } catch (error) {
     console.error('❌ Google Drive 백업 실패:', error);
     alert('❌ Google Drive 백업 실패: ' + error.message);
   }
 };
+
+// 🔧 백업 기록 초기화 함수 (필요시 사용)
+const resetBackupHistory = () => {
+  if (confirm('⚠️ 백업 기록을 초기화하시겠습니까?\n다음 백업 시 모든 사진이 다시 백업됩니다.')) {
+    localStorage.removeItem('backedUpPhotos');
+    alert('✅ 백업 기록이 초기화되었습니다.');
+  }
+};
+  
 const sendBackupEmail = async () => {
   if (typeof window.emailjs === 'undefined') {
     alert('EmailJS가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
