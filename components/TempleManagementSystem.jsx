@@ -493,8 +493,23 @@ const sendGoogleDriveBackup = async () => {
     // 2️⃣ localStorage에서 이미 백업한 사진 목록 가져오기
     const backedUpPhotos = JSON.parse(localStorage.getItem('backedUpPhotos') || '[]');
     
-    // 3️⃣ 새로운 사진만 필터링 (이미 백업한 사진 제외)
-    const newPhotos = allPhotoURLs.filter(url => !backedUpPhotos.includes(url));
+    // 3️⃣ 새로운 사진만 필터링 (photoData 객체 형태로)
+    const newPhotos = [];
+    Object.values(data).forEach(believer => {
+      if (believer.bulsa && believer.bulsa.length > 0) {
+        believer.bulsa.forEach(bulsa => {
+          if (bulsa.photoURLs && bulsa.photoURLs.length > 0) {
+            bulsa.photoURLs.forEach(photoData => {
+              const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
+              // 백업되지 않은 사진만 추가
+              if (!backedUpPhotos.includes(originalUrl)) {
+                newPhotos.push(photoData); // 🔑 전체 photoData 객체 저장
+              }
+            });
+          }
+        });
+      }
+    });
     
     console.log(`📊 전체 사진: ${allPhotoURLs.length}장`);
     console.log(`✅ 이미 백업: ${backedUpPhotos.length}장`);
@@ -506,7 +521,7 @@ const sendGoogleDriveBackup = async () => {
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
     
-    // 5️⃣ 백업 실행 (새 사진 URL만 전송)
+    // 5️⃣ 백업 실행 (새 사진 photoData 객체 전송)
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
@@ -516,7 +531,7 @@ const sendGoogleDriveBackup = async () => {
       body: JSON.stringify({
         backupData: data,
         fileName: fileName,
-        newPhotoURLs: newPhotos,  // 🆕 새로운 사진 URL만 전송
+        newPhotoURLs: newPhotos,  // 🔑 photoData 객체 배열 전송
         timestamp: timestamp.toISOString(),
         believerCount: Object.keys(data).length,
         totalPhotoCount: allPhotoURLs.length,
@@ -525,8 +540,11 @@ const sendGoogleDriveBackup = async () => {
       })
     });
 
-    // 6️⃣ 백업 완료 후 localStorage 업데이트 (새 사진을 백업 목록에 추가)
-    const updatedBackedUpPhotos = [...new Set([...backedUpPhotos, ...newPhotos])];
+    // 6️⃣ 백업 완료 후 localStorage 업데이트
+    const newPhotoUrls = newPhotos.map(photoData => 
+      typeof photoData === 'object' ? photoData.original : photoData
+    );
+    const updatedBackedUpPhotos = [...new Set([...backedUpPhotos, ...newPhotoUrls])];
     localStorage.setItem('backedUpPhotos', JSON.stringify(updatedBackedUpPhotos));
 
     console.log('✅ Google Drive 백업 완료!');
@@ -543,7 +561,6 @@ const sendGoogleDriveBackup = async () => {
     alert('❌ Google Drive 백업 실패: ' + error.message);
   }
 };
-
 // 🔧 백업 기록 초기화 함수 (필요시 사용)
 const resetBackupHistory = () => {
   if (confirm('⚠️ 백업 기록을 초기화하시겠습니까?\n다음 백업 시 모든 사진이 다시 백업됩니다.')) {
