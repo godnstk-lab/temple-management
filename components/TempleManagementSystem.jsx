@@ -1334,16 +1334,28 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                 </div>
               </div>
               {userRole === 'admin' && (
-  <button 
-  onClick={() => {
-    sendBackupEmail();
-    sendGoogleDriveBackup();  // ← Google Drive도 추가!
-  }}
-  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base mr-2"
->
-  <span className="text-lg">💾</span>
-  <span className="hidden sm:inline">이메일 백업</span>
-</button>
+  <div className="flex gap-2">
+    <button 
+      onClick={() => {
+        sendBackupEmail();
+        sendGoogleDriveBackup();
+      }}
+      className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base"
+    >
+      <span className="text-lg">💾</span>
+      <span className="hidden sm:inline">이메일 백업</span>
+    </button>
+    
+    {/* 🆕 백업 기록 초기화 버튼 */}
+    <button 
+      onClick={resetBackupHistory}
+      className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base"
+      title="백업 기록 초기화 (다음 백업 시 모든 사진 재백업)"
+    >
+      <span className="text-lg">🔄</span>
+      <span className="hidden sm:inline">기록초기화</span>
+    </button>
+  </div>
 )}
               <button onClick={handleLogout} className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg transition-colors shadow-md text-sm sm:text-base">
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
