@@ -51,13 +51,3 @@ export default function Document() {
     </Html>
   );
 }
-```
-
----
-
-## ✅ 작업 순서:
-
-### 1️⃣ `pages/_document.js` 파일 찾기
-```
-pages/
-└── _document-fixed.js  ← 이 파일을 열기
