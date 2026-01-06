@@ -462,6 +462,143 @@ const checkAndSendAutoBackup = async () => {
 // 🎯 중복 사진 방지 백업 시스템
 // 이미 백업한 사진은 건너뛰고, 새 사진만 Google Drive에 저장
 
+// 🆕 Excel 파일 생성 함수 (sendGoogleDriveBackup 위에 추가)
+const createExcelBackup = async (data) => {
+  try {
+    // ExcelJS 동적 로드
+    const ExcelJS = window.ExcelJS || await import('https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js').then(m => m.default);
+    const workbook = new ExcelJS.Workbook();
+    
+    // 1️⃣ 요약 시트
+    const summarySheet = workbook.addWorksheet('요약');
+    summarySheet.columns = [
+      { header: '항목', key: 'item', width: 30 },
+      { header: '값', key: 'value', width: 20 }
+    ];
+    
+    const believers = Object.values(data);
+    const totalBelievers = believers.length;
+    const totalBulsa = believers.reduce((sum, b) => 
+      sum + (b.bulsa || []).reduce((s, item) => s + parseInt(item.amount || 0), 0), 0
+    );
+    const totalDeposit = believers.reduce((sum, b) => 
+      sum + (b.deposits || []).reduce((s, item) => s + parseInt(item.amount || 0), 0), 0
+    );
+    const totalUnpaid = totalBulsa - totalDeposit;
+    
+    summarySheet.addRows([
+      { item: '총 신도 수', value: `${totalBelievers}명` },
+      { item: '총 불사금액', value: `${totalBulsa.toLocaleString()}만원` },
+      { item: '총 입금액', value: `${totalDeposit.toLocaleString()}만원` },
+      { item: '총 미수금', value: `${totalUnpaid.toLocaleString()}만원` },
+      { item: '입금률', value: totalBulsa > 0 ? `${((totalDeposit / totalBulsa) * 100).toFixed(1)}%` : '0%' }
+    ]);
+    
+    // 헤더 스타일
+    summarySheet.getRow(1).font = { bold: true, size: 12 };
+    summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+    
+    // 2️⃣ 신도 목록 시트
+    const believersSheet = workbook.addWorksheet('신도 목록');
+    believersSheet.columns = [
+      { header: '이름', key: 'name', width: 15 },
+      { header: '전화번호', key: 'phone', width: 15 },
+      { header: '주소', key: 'address', width: 30 },
+      { header: '불사금액', key: 'bulsaAmount', width: 15 },
+      { header: '입금액', key: 'depositAmount', width: 15 },
+      { header: '미수금', key: 'unpaid', width: 15 }
+    ];
+    
+    believers.forEach(believer => {
+      const bulsaAmount = (believer.bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+      const depositAmount = (believer.deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0);
+      
+      believersSheet.addRow({
+        name: believer.name,
+        phone: believer.phone,
+        address: believer.address || '',
+        bulsaAmount: `${bulsaAmount.toLocaleString()}만원`,
+        depositAmount: `${depositAmount.toLocaleString()}만원`,
+        unpaid: `${(bulsaAmount - depositAmount).toLocaleString()}만원`
+      });
+    });
+    
+    believersSheet.getRow(1).font = { bold: true, size: 12 };
+    believersSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+    
+    // 3️⃣ 불사내용 시트
+    const bulsaSheet = workbook.addWorksheet('불사내용');
+    bulsaSheet.columns = [
+      { header: '신도명', key: 'believerName', width: 15 },
+      { header: '불사내용', key: 'content', width: 20 },
+      { header: '크기', key: 'size', width: 10 },
+      { header: '금액', key: 'amount', width: 15 },
+      { header: '봉안자/복위자', key: 'person', width: 20 },
+      { header: '봉안위치', key: 'location', width: 25 },
+      { header: '절 여부', key: 'isTemple', width: 10 },
+      { header: '사진 개수', key: 'photoCount', width: 12 }
+    ];
+    
+    believers.forEach(believer => {
+      if (believer.bulsa && believer.bulsa.length > 0) {
+        believer.bulsa.forEach(b => {
+          bulsaSheet.addRow({
+            believerName: believer.name,
+            content: b.content,
+            size: b.size || '',
+            amount: `${parseInt(b.amount || 0).toLocaleString()}만원`,
+            person: b.person || '',
+            location: b.location || '',
+            isTemple: b.isTemple ? '예' : '아니오',
+            photoCount: (b.photoURLs || []).length
+          });
+        });
+      }
+    });
+    
+    bulsaSheet.getRow(1).font = { bold: true, size: 12 };
+    bulsaSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+    
+    // 4️⃣ 입금내역 시트
+    const depositSheet = workbook.addWorksheet('입금내역');
+    depositSheet.columns = [
+      { header: '신도명', key: 'believerName', width: 15 },
+      { header: '날짜', key: 'date', width: 15 },
+      { header: '금액', key: 'amount', width: 15 }
+    ];
+    
+    believers.forEach(believer => {
+      if (believer.deposits && believer.deposits.length > 0) {
+        const sortedDeposits = [...believer.deposits].sort((a, b) => 
+          new Date(a.date) - new Date(b.date)
+        );
+        
+        sortedDeposits.forEach(d => {
+          depositSheet.addRow({
+            believerName: believer.name,
+            date: d.date,
+            amount: `${parseInt(d.amount || 0).toLocaleString()}만원`
+          });
+        });
+      }
+    });
+    
+    depositSheet.getRow(1).font = { bold: true, size: 12 };
+    depositSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+    
+    // Excel 파일을 Base64로 변환
+    const buffer = await workbook.xlsx.writeBuffer();
+    const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
+    
+    return base64;
+    
+  } catch (error) {
+    console.error('Excel 생성 오류:', error);
+    throw error;
+  }
+};
+
+// 🔄 수정된 sendGoogleDriveBackup 함수
 const sendGoogleDriveBackup = async () => {
   try {
     alert('Google Drive 백업 시작...');
@@ -493,7 +630,7 @@ const sendGoogleDriveBackup = async () => {
     // 2️⃣ localStorage에서 이미 백업한 사진 목록 가져오기
     const backedUpPhotos = JSON.parse(localStorage.getItem('backedUpPhotos') || '[]');
     
-    // 3️⃣ 새로운 사진만 필터링 (photoData 객체 형태로)
+    // 3️⃣ 새로운 사진만 필터링
     const newPhotos = [];
     Object.values(data).forEach(believer => {
       if (believer.bulsa && believer.bulsa.length > 0) {
@@ -501,9 +638,8 @@ const sendGoogleDriveBackup = async () => {
           if (bulsa.photoURLs && bulsa.photoURLs.length > 0) {
             bulsa.photoURLs.forEach(photoData => {
               const originalUrl = typeof photoData === 'object' ? photoData.original : photoData;
-              // 백업되지 않은 사진만 추가
               if (!backedUpPhotos.includes(originalUrl)) {
-                newPhotos.push(photoData); // 🔑 전체 photoData 객체 저장
+                newPhotos.push(photoData);
               }
             });
           }
@@ -515,13 +651,20 @@ const sendGoogleDriveBackup = async () => {
     console.log(`✅ 이미 백업: ${backedUpPhotos.length}장`);
     console.log(`🆕 새로운 사진: ${newPhotos.length}장`);
 
-    // 4️⃣ 백업 파일명 생성
+    // 4️⃣ Excel 파일 생성
+    alert('📊 Excel 파일 생성 중...');
+    const excelData = await createExcelBackup(data);
+    console.log('✅ Excel 파일 생성 완료!');
+
+    // 5️⃣ 백업 파일명 생성
     const timestamp = new Date();
-    const fileName = `해운사_백업_${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}-${String(timestamp.getMinutes()).padStart(2, '0')}-${String(timestamp.getSeconds()).padStart(2, '0')}.json`;
+    const dateStr = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}-${String(timestamp.getMinutes()).padStart(2, '0')}-${String(timestamp.getSeconds()).padStart(2, '0')}`;
+    const jsonFileName = `해운사_백업_${dateStr}.json`;
+    const excelFileName = `해운사_백업_${dateStr}.xlsx`;
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
     
-    // 5️⃣ 백업 실행 (새 사진 photoData 객체 전송)
+    // 6️⃣ 백업 실행 (JSON + Excel 파일 전송)
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
@@ -530,8 +673,10 @@ const sendGoogleDriveBackup = async () => {
       },
       body: JSON.stringify({
         backupData: data,
-        fileName: fileName,
-        newPhotoURLs: newPhotos,  // 🔑 photoData 객체 배열 전송
+        fileName: jsonFileName,
+        excelData: excelData,  // 🆕 Excel 파일 데이터
+        excelFileName: excelFileName,  // 🆕 Excel 파일명
+        newPhotoURLs: newPhotos,
         timestamp: timestamp.toISOString(),
         believerCount: Object.keys(data).length,
         totalPhotoCount: allPhotoURLs.length,
@@ -540,7 +685,7 @@ const sendGoogleDriveBackup = async () => {
       })
     });
 
-    // 6️⃣ 백업 완료 후 localStorage 업데이트
+    // 7️⃣ 백업 완료 후 localStorage 업데이트
     const newPhotoUrls = newPhotos.map(photoData => 
       typeof photoData === 'object' ? photoData.original : photoData
     );
@@ -552,7 +697,8 @@ const sendGoogleDriveBackup = async () => {
       `✅ Google Drive 백업 완료!\n\n` +
       `📊 전체 사진: ${allPhotoURLs.length}장\n` +
       `🆕 새로 백업: ${newPhotos.length}장\n` +
-      `✓ 이미 백업됨: ${backedUpPhotos.length}장\n\n` +
+      `✓ 이미 백업됨: ${backedUpPhotos.length}장\n` +
+      `📋 JSON + Excel 파일 저장됨\n\n` +
       `💡 중복 사진은 건너뛰었습니다!`
     );
     
