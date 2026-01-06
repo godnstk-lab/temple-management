@@ -465,8 +465,18 @@ const checkAndSendAutoBackup = async () => {
 // 🆕 Excel 파일 생성 함수 (sendGoogleDriveBackup 위에 추가)
 const createExcelBackup = async (data) => {
   try {
-    // ExcelJS 동적 로드
-    const ExcelJS = window.ExcelJS || await import('https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js').then(m => m.default);
+    // ExcelJS 라이브러리 동적 로드
+    if (!window.ExcelJS) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    
+    const ExcelJS = window.ExcelJS;
     const workbook = new ExcelJS.Workbook();
     
     // 1️⃣ 요약 시트
@@ -494,7 +504,6 @@ const createExcelBackup = async (data) => {
       { item: '입금률', value: totalBulsa > 0 ? `${((totalDeposit / totalBulsa) * 100).toFixed(1)}%` : '0%' }
     ]);
     
-    // 헤더 스타일
     summarySheet.getRow(1).font = { bold: true, size: 12 };
     summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
     
@@ -597,8 +606,7 @@ const createExcelBackup = async (data) => {
     throw error;
   }
 };
-
-// 🔄 수정된 sendGoogleDriveBackup 함수
+ 
 const sendGoogleDriveBackup = async () => {
   try {
     alert('Google Drive 백업 시작...');
