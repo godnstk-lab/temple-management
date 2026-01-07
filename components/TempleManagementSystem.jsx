@@ -683,34 +683,76 @@ const sendGoogleDriveBackup = async () => {
     console.log('📤 Google Drive 전송 시작...');
     console.log('Excel 데이터:', excelData ? `${excelData.length} bytes` : 'null');
 
-    const payload = {
-      backupData: data,
-      fileName: jsonFileName,
-      excelData: excelData,
-      excelFileName: excelData ? excelFileName : null,
-      newPhotoURLs: newPhotos,
-      timestamp: timestamp.toISOString(),
-      believerCount: Object.keys(data).length,
-      totalPhotoCount: allPhotoURLs.length,
-      newPhotoCount: newPhotos.length,
-      alreadyBackedUpCount: backedUpPhotos.length
-    };
+    // 📊 사진이 너무 많으면 Excel 전송만 하고, 사진은 별도 전송
+const shouldSendPhotos = newPhotos.length <= 10; // 10장 이하만 같이 전송
+
+const payload = {
+  backupData: data,
+  fileName: jsonFileName,
+  excelData: excelData,
+  excelFileName: excelData ? excelFileName : null,
+  newPhotoURLs: shouldSendPhotos ? newPhotos : [],  // 🆕 조건부 전송
+  timestamp: timestamp.toISOString(),
+  believerCount: Object.keys(data).length,
+  totalPhotoCount: allPhotoURLs.length,
+  newPhotoCount: newPhotos.length,
+  alreadyBackedUpCount: backedUpPhotos.length
+};
+
+console.log('📦 Payload 크기:', JSON.stringify(payload).length, 'bytes');
+
+if (!shouldSendPhotos && newPhotos.length > 0) {
+  console.log(`⚠️ 사진이 ${newPhotos.length}장으로 많아서 별도 전송합니다`);
+}
 
     console.log('📦 Payload 크기:', JSON.stringify(payload).length, 'bytes');
 
-    // 7️⃣ 백업 실행
-    const response = await fetch(SCRIPT_URL, {
+    // 7️⃣ 백업 실행 (JSON + Excel)
+const response = await fetch(SCRIPT_URL, {
+  method: 'POST',
+  mode: 'no-cors',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify(payload)
+});
+
+console.log('✅ JSON + Excel 전송 완료');
+
+// 8️⃣ 사진이 많으면 별도 전송
+if (!shouldSendPhotos && newPhotos.length > 0) {
+  console.log(`📸 사진 ${newPhotos.length}장 별도 전송 시작...`);
+  
+  // 10장씩 나눠서 전송
+  const chunkSize = 10;
+  for (let i = 0; i < newPhotos.length; i += chunkSize) {
+    const chunk = newPhotos.slice(i, i + chunkSize);
+    const photoPayload = {
+      newPhotoURLs: chunk,
+      timestamp: timestamp.toISOString(),
+      isPhotoOnly: true,
+      chunkNumber: Math.floor(i / chunkSize) + 1,
+      totalChunks: Math.ceil(newPhotos.length / chunkSize)
+    };
+    
+    console.log(`📤 사진 ${i + 1}~${Math.min(i + chunkSize, newPhotos.length)}장 전송 중...`);
+    
+    await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(photoPayload)
     });
-
-    console.log('✅ 전송 완료 (응답 상태 확인 불가 - no-cors 모드)');
-
-    // 8️⃣ 백업 완료 후 localStorage 업데이트
+    
+    // 2초 쉬기
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  
+  console.log('✅ 사진 전송 완료');
+}
+    // 9️⃣ 백업 완료 후 localStorage 업데이트
     const newPhotoUrls = newPhotos.map(photoData => 
       typeof photoData === 'object' ? photoData.original : photoData
     );
