@@ -707,19 +707,53 @@ if (!shouldSendPhotos && newPhotos.length > 0) {
 
     console.log('📦 Payload 크기:', JSON.stringify(payload).length, 'bytes');
 
-    // 7️⃣ 백업 실행 (JSON + Excel)
-const response = await fetch(SCRIPT_URL, {
+// 7️⃣ 백업 실행 (JSON 먼저)
+const jsonPayload = {
+  backupData: data,
+  fileName: jsonFileName,
+  newPhotoURLs: [],
+  timestamp: timestamp.toISOString(),
+  believerCount: Object.keys(data).length,
+  totalPhotoCount: allPhotoURLs.length,
+  newPhotoCount: newPhotos.length,
+  alreadyBackedUpCount: backedUpPhotos.length
+};
+
+console.log('📤 JSON 전송 중...');
+await fetch(SCRIPT_URL, {
   method: 'POST',
   mode: 'no-cors',
   headers: {
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify(payload)
+  body: JSON.stringify(jsonPayload)
 });
 
-console.log('✅ JSON + Excel 전송 완료');
+console.log('✅ JSON 전송 완료');
 
-// 8️⃣ 사진이 많으면 별도 전송
+// 8️⃣ Excel 별도 전송
+if (excelData) {
+  console.log('📊 Excel 전송 중...');
+  const excelPayload = {
+    isExcelOnly: true,
+    excelData: excelData,
+    excelFileName: excelFileName,
+    timestamp: timestamp.toISOString()
+  };
+  
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(excelPayload)
+  });
+  
+  console.log('✅ Excel 전송 완료');
+}
+
+// 9️⃣ 사진이 많으면 별도 전송
 if (!shouldSendPhotos && newPhotos.length > 0) {
   console.log(`📸 사진 ${newPhotos.length}장 별도 전송 시작...`);
   
@@ -752,7 +786,7 @@ if (!shouldSendPhotos && newPhotos.length > 0) {
   
   console.log('✅ 사진 전송 완료');
 }
-    // 9️⃣ 백업 완료 후 localStorage 업데이트
+    // 1️⃣0️⃣  백업 완료 후 localStorage 업데이트
     const newPhotoUrls = newPhotos.map(photoData => 
       typeof photoData === 'object' ? photoData.original : photoData
     );
