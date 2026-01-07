@@ -661,8 +661,15 @@ const sendGoogleDriveBackup = async () => {
 
     // 4️⃣ Excel 파일 생성
     alert('📊 Excel 파일 생성 중...');
-    const excelData = await createExcelBackup(data);
-    console.log('✅ Excel 파일 생성 완료!');
+    let excelData = null;
+    try {
+      excelData = await createExcelBackup(data);
+      console.log('✅ Excel 생성 성공!');
+      console.log('Excel 데이터 길이:', excelData ? excelData.length : 0);
+    } catch (excelError) {
+      console.error('❌ Excel 생성 실패:', excelError);
+      alert('⚠️ Excel 생성 실패: ' + excelError.message + '\nJSON과 사진만 백업합니다.');
+    }
 
     // 5️⃣ 백업 파일명 생성
     const timestamp = new Date();
@@ -672,28 +679,38 @@ const sendGoogleDriveBackup = async () => {
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
     
-    // 6️⃣ 백업 실행 (JSON + Excel 파일 전송)
+    // 6️⃣ 전송 데이터 준비
+    console.log('📤 Google Drive 전송 시작...');
+    console.log('Excel 데이터:', excelData ? `${excelData.length} bytes` : 'null');
+
+    const payload = {
+      backupData: data,
+      fileName: jsonFileName,
+      excelData: excelData,
+      excelFileName: excelData ? excelFileName : null,
+      newPhotoURLs: newPhotos,
+      timestamp: timestamp.toISOString(),
+      believerCount: Object.keys(data).length,
+      totalPhotoCount: allPhotoURLs.length,
+      newPhotoCount: newPhotos.length,
+      alreadyBackedUpCount: backedUpPhotos.length
+    };
+
+    console.log('📦 Payload 크기:', JSON.stringify(payload).length, 'bytes');
+
+    // 7️⃣ 백업 실행
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        backupData: data,
-        fileName: jsonFileName,
-        excelData: excelData,  // 🆕 Excel 파일 데이터
-        excelFileName: excelFileName,  // 🆕 Excel 파일명
-        newPhotoURLs: newPhotos,
-        timestamp: timestamp.toISOString(),
-        believerCount: Object.keys(data).length,
-        totalPhotoCount: allPhotoURLs.length,
-        newPhotoCount: newPhotos.length,
-        alreadyBackedUpCount: backedUpPhotos.length
-      })
+      body: JSON.stringify(payload)
     });
 
-    // 7️⃣ 백업 완료 후 localStorage 업데이트
+    console.log('✅ 전송 완료 (응답 상태 확인 불가 - no-cors 모드)');
+
+    // 8️⃣ 백업 완료 후 localStorage 업데이트
     const newPhotoUrls = newPhotos.map(photoData => 
       typeof photoData === 'object' ? photoData.original : photoData
     );
@@ -706,13 +723,14 @@ const sendGoogleDriveBackup = async () => {
       `📊 전체 사진: ${allPhotoURLs.length}장\n` +
       `🆕 새로 백업: ${newPhotos.length}장\n` +
       `✓ 이미 백업됨: ${backedUpPhotos.length}장\n` +
-      `📋 JSON + Excel 파일 저장됨\n\n` +
+      `📋 JSON ${excelData ? '+ Excel' : '(Excel 실패)'} 파일 저장됨\n\n` +
       `💡 중복 사진은 건너뛰었습니다!`
     );
     
   } catch (error) {
     console.error('❌ Google Drive 백업 실패:', error);
-    alert('❌ Google Drive 백업 실패: ' + error.message);
+    console.error('에러 상세:', error.stack);
+    alert('❌ Google Drive 백업 실패\n\n백업이 성공했을 수도 있으니\nGoogle Drive를 확인해주세요\n\n에러: ' + error.message);
   }
 };
 // 🔧 백업 기록 초기화 함수 (필요시 사용)
