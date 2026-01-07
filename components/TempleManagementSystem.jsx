@@ -731,15 +731,23 @@ await fetch(SCRIPT_URL, {
 
 console.log('✅ JSON 전송 완료');
 
+// 🆕 2초 쉬기 (Google Apps Script가 처리할 시간 주기)
+await new Promise(resolve => setTimeout(resolve, 2000));
+
 // 8️⃣ Excel 별도 전송
 if (excelData) {
   console.log('📊 Excel 전송 중...');
+  console.log('Excel 파일명:', excelFileName);
+  console.log('Excel 데이터 길이:', excelData.length);
+  
   const excelPayload = {
     isExcelOnly: true,
     excelData: excelData,
     excelFileName: excelFileName,
     timestamp: timestamp.toISOString()
   };
+  
+  console.log('📦 Excel Payload 생성 완료');
   
   await fetch(SCRIPT_URL, {
     method: 'POST',
@@ -751,8 +759,9 @@ if (excelData) {
   });
   
   console.log('✅ Excel 전송 완료');
+} else {
+  console.log('⚠️ Excel 데이터가 없습니다!');
 }
-
 // 9️⃣ 사진이 많으면 별도 전송
 if (!shouldSendPhotos && newPhotos.length > 0) {
   console.log(`📸 사진 ${newPhotos.length}장 별도 전송 시작...`);
