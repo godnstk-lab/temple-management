@@ -406,35 +406,44 @@ useEffect(() => {
     }
   };
 
-  // 🆕 로그인 시 자동 백업 체크 함수
+ // 🆕 로그인 시 자동 백업 체크 함수 (Firebase 공유)
 const checkAndSendAutoBackup = async () => {
-  const lastBackupDate = localStorage.getItem('lastBackupDate');
-  const today = new Date();
-  
-  // 이번 주의 시작일 (일요일) 계산
-  const dayOfWeek = today.getDay(); // 0 = 일요일, 1 = 월요일, ...
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - dayOfWeek); // 이번 주 일요일
-  thisWeekStart.setHours(0, 0, 0, 0); // 자정으로 설정
-  
-  const thisWeekStartString = thisWeekStart.toISOString().split('T')[0];
-  
-  console.log('📅 마지막 백업 날짜:', lastBackupDate);
-  console.log('📅 이번 주 시작일:', thisWeekStartString);
-  
-  // 마지막 백업이 이번 주 이전이면 백업 실행
-  if (!lastBackupDate || lastBackupDate < thisWeekStartString) {
-    console.log('✅ 이번 주 첫 로그인! 자동 백업 시작...');
+  try {
+    // Firebase에서 마지막 백업 날짜 가져오기
+    const backupDateRef = ref(database, 'systemInfo/lastBackupDate');
+    const snapshot = await get(backupDateRef);
+    const lastBackupDate = snapshot.val();
     
-     // 🆕 순차 실행!
-    await sendBackupEmail();        // 1️⃣ 먼저 이메일
-    await sendGoogleDriveBackup();  // 2️⃣ 그 다음 Google Drive
+    const today = new Date();
     
-    // 오늘 날짜로 백업 날짜 저장
-    const todayString = today.toISOString().split('T')[0];
-    localStorage.setItem('lastBackupDate', todayString);
-  } else {
-    console.log('ℹ️ 이번 주 이미 백업했습니다. 스킵!');
+    // 이번 주의 시작일 (일요일) 계산
+    const dayOfWeek = today.getDay(); // 0 = 일요일, 1 = 월요일, ...
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - dayOfWeek); // 이번 주 일요일
+    thisWeekStart.setHours(0, 0, 0, 0); // 자정으로 설정
+    
+    const thisWeekStartString = thisWeekStart.toISOString().split('T')[0];
+    
+    console.log('📅 마지막 백업 날짜 (Firebase):', lastBackupDate);
+    console.log('📅 이번 주 시작일:', thisWeekStartString);
+    
+    // 마지막 백업이 이번 주 이전이면 백업 실행
+    if (!lastBackupDate || lastBackupDate < thisWeekStartString) {
+      console.log('✅ 이번 주 첫 로그인! 자동 백업 시작...');
+      
+      // 🆕 순차 실행!
+      await sendBackupEmail();        // 1️⃣ 먼저 이메일
+      await sendGoogleDriveBackup();  // 2️⃣ 그 다음 Google Drive
+      
+      // 오늘 날짜로 백업 날짜 저장 (Firebase에 저장!)
+      const todayString = today.toISOString().split('T')[0];
+      await set(backupDateRef, todayString);
+      console.log('✅ Firebase에 백업 날짜 저장 완료:', todayString);
+    } else {
+      console.log('ℹ️ 이번 주 이미 백업했습니다. 스킵!');
+    }
+  } catch (error) {
+    console.error('❌ 자동 백업 체크 실패:', error);
   }
 };
   const handleLogin = async () => {
