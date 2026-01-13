@@ -685,10 +685,9 @@ const sendGoogleDriveBackup = async () => {
     const dateStr = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')}_${String(timestamp.getHours()).padStart(2, '0')}-${String(timestamp.getMinutes()).padStart(2, '0')}-${String(timestamp.getSeconds()).padStart(2, '0')}`;
     const jsonFileName = `해운사_백업_${dateStr}.json`;
     const excelFileName = `해운사_백업_${dateStr}.xlsx`;
-
-    const SCRIPT_URL = https://script.google.com/macros/s/AKfycbzFT_lMl4C5kLNXbnQi37Y--Q1HC9nAtloKQrf1Us_OsokL26nwLV_HsiZjyur1WvJP9Q/exec
-    
-    // 6️⃣ 전송 데이터 준비
+   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzFT_lMl4C5kLNXbnQi37Y--Q1HC9nAtloKQrf1Us_OsokL26nwLV_HsiZjyur1WvJP9Q/exec'; 
+  
+   // 6️⃣ 전송 데이터 준비
     console.log('📤 Google Drive 전송 시작...');
     console.log('Excel 데이터:', excelData ? `${excelData.length} bytes` : 'null');
 
