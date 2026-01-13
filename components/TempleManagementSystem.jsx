@@ -686,7 +686,7 @@ const sendGoogleDriveBackup = async () => {
     const jsonFileName = `해운사_백업_${dateStr}.json`;
     const excelFileName = `해운사_백업_${dateStr}.xlsx`;
 
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXAsnTKdFq-kdCVFMkGjybJYYlV0WlXW9SpNygHWs5J6t4LmmgiSwTcUy_AXKirfzENg/exec';
+    const SCRIPT_URL = https://script.google.com/macros/s/AKfycbzFT_lMl4C5kLNXbnQi37Y--Q1HC9nAtloKQrf1Us_OsokL26nwLV_HsiZjyur1WvJP9Q/exec
     
     // 6️⃣ 전송 데이터 준비
     console.log('📤 Google Drive 전송 시작...');
