@@ -1828,9 +1828,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
   <div className="flex items-center gap-2">
-    {believer.region && believer.region.split(',').map(r => r.trim()).filter(Boolean).map((r, i) => (
-  <span key={i} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{r}</span>
-))}
+    {believer.region && (() => {
+  const regions = believer.region.split(',').map(r => r.trim()).filter(Boolean);
+  return (
+    <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">
+      {regions[0]}{regions.length > 1 ? ` +${regions.length - 1}` : ''}
+    </span>
+  );
+})()}
     <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
       {believer.name}
     </button>
