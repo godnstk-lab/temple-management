@@ -1808,14 +1808,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
-    {believer.region ? (
+  <div className="flex items-center gap-2">
+    {believer.region && (
       <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{believer.region}</span>
-    ) : (
-      <span className="text-gray-400 text-xs">-</span>
     )}
-  </td> <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
-    {believer.name}
-  </button>
+    <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
+      {believer.name}
+    </button>
+  </div>
 </td>
                           <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
