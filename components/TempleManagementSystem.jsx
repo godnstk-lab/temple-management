@@ -61,21 +61,40 @@ const MultiPhotoPreview = React.memo(({ photos, onRemove }) => {
     </div>
   );
 });
-const RegionSelect = React.memo(({ value, onChange, regions }) => (
-  <div>
-    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">지역</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
-    >
-      <option value="">지역 선택</option>
-      {regions.map(r => (
-        <option key={r} value={r}>{r}</option>
-      ))}
-    </select>
-  </div>
-));
+const RegionSelect = React.memo(({ value, onChange, regions }) => {
+  const selected = value ? value.split(',').map(v => v.trim()).filter(Boolean) : [];
+  const toggle = (r) => {
+    const next = selected.includes(r)
+      ? selected.filter(s => s !== r)
+      : [...selected, r];
+    onChange(next.join(','));
+  };
+  return (
+    <div>
+      <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">지역</label>
+      <div className="flex flex-wrap gap-2 p-2 border-2 border-amber-300 rounded-lg bg-white min-h-[44px]">
+        {regions.length === 0 && <span className="text-xs text-gray-400">등록된 지역이 없습니다</span>}
+        {regions.map(r => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => toggle(r)}
+            className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+              selected.includes(r)
+                ? 'bg-amber-600 text-white border-amber-600'
+                : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <p className="text-xs text-amber-700 mt-1">선택: {selected.join(', ')}</p>
+      )}
+    </div>
+  );
+});
 const SizeSelector = React.memo(({ value, onChange }) => (
   <div>
     <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
@@ -1445,7 +1464,10 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
 
  const filteredBelievers = useMemo(() => {
    return believers.filter(b => {
-      if (regionFilter !== '전체' && b.region !== regionFilter) return false;
+      if (regionFilter !== '전체') {
+  const believerRegions = (b.region || '').split(',').map(r => r.trim()).filter(Boolean);
+  if (!believerRegions.includes(regionFilter)) return false;
+}
       if (!searchTerm) return true;
       const searchParts = searchTerm.trim().split(/\s+/);
     const sizeKeywords = [];
@@ -1806,9 +1828,9 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
   <div className="flex items-center gap-2">
-    {believer.region && (
-      <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{believer.region}</span>
-    )}
+    {believer.region && believer.region.split(',').map(r => r.trim()).filter(Boolean).map((r, i) => (
+  <span key={i} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{r}</span>
+))}
     <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
       {believer.name}
     </button>
