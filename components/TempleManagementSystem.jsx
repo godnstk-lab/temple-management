@@ -2411,25 +2411,26 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
             id="newRegionInput"
             placeholder="예: 서울, 부산, 제주..."
             className="flex-1 px-3 py-2.5 border-2 border-amber-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            onKeyPress={(e) => {
+            onKeyPress={async (e) => {
               if (e.key === 'Enter') {
                 const val = e.target.value.trim();
                 if (!val) return;
                 if (regions.includes(val)) { alert('이미 존재하는 지역입니다.'); return; }
                 const newRegions = [...regions, val];
-                saveRegions(newRegions);
+                await saveRegions(newRegions);
                 e.target.value = '';
               }
             }}
           />
           <button
-            onClick={() => {
-              const input = document.getElementById('newRegionInput');
+            onClick={async () => {
+  const input = document.getElementById('newRegionInput');
               const val = input.value.trim();
               if (!val) return;
               if (regions.includes(val)) { alert('이미 존재하는 지역입니다.'); return; }
               const newRegions = [...regions, val];
-              saveRegions(newRegions);
+              await saveRegions(newRegions);
+input.value = '';
               input.value = '';
             }}
             className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-sm transition-colors"
