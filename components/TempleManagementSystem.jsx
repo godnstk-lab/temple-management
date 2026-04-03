@@ -1272,7 +1272,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
       return;
     }
     const updatedBelievers = believers.map(b => 
-      b.id === selectedBeliever.id ? { ...b, name: formData.name, phone: formData.phone, address: formData.address } : b
+      b.id === selectedBeliever.id ? { ...b, name: formData.name, phone: formData.phone, address: formData.address, region: formData.region } : b
     );
     setBelievers(updatedBelievers);
     saveBelievers(updatedBelievers);
