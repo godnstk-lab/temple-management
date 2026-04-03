@@ -1732,7 +1732,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                   <table className="min-w-full">
                    <thead>
   <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
-    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-2 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="name" 
         label="이름" 
@@ -1748,7 +1748,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-2 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="bulsa" 
         label="불사내용" 
@@ -1764,7 +1764,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-2 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="deposit" 
         label="입금액" 
@@ -1780,7 +1780,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-1 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-2 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="unpaid" 
         label="미수금" 
@@ -1797,14 +1797,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
       />
     </th>
     {userRole === 'admin' && (
-      <th className="px-1 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
+      <th className="px-2 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
     )}
   </tr>
 </thead>
                     <tbody>
                       {sortedBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
-                          <td className="px-1 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
   <div className="flex items-center gap-2">
     {believer.region && (
       <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{believer.region}</span>
@@ -1838,11 +1838,11 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                               ) : '없음'}
                             </button>
                           </td>
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right text-red-600 font-bold whitespace-nowrap">
+                          <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right text-red-600 font-bold whitespace-nowrap">
                             {formatNumber(believer.unpaid)}{parseInt(believer.unpaid || 0) >= 10000 ? '원' : '만'}
                           </td>
                           {userRole === 'admin' && (
-                            <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                            <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1 sm:gap-2">
                                 <button onClick={() => handleDelete(believer)} className="px-2 sm:px-4 py-1.5 sm:py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-colors text-xs sm:text-sm">
                                   삭제
