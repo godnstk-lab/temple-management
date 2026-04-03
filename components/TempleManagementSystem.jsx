@@ -1731,9 +1731,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full">
                    <thead>
-  
-                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">지역</th>
-                    <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
+  <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
     <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="name" 
