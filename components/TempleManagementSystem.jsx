@@ -61,7 +61,21 @@ const MultiPhotoPreview = React.memo(({ photos, onRemove }) => {
     </div>
   );
 });
-
+const RegionSelect = React.memo(({ value, onChange, regions }) => (
+  <div>
+    <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">지역</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-base border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+    >
+      <option value="">지역 선택</option>
+      {regions.map(r => (
+        <option key={r} value={r}>{r}</option>
+      ))}
+    </select>
+  </div>
+));
 const SizeSelector = React.memo(({ value, onChange }) => (
   <div>
     <label className="block text-xs sm:text-sm font-bold text-amber-900 mb-2">크기</label>
@@ -157,11 +171,14 @@ const [startDate, setStartDate] = useState('');
 const [endDate, setEndDate] = useState('');
   const [mergeMonthlyDeposits, setMergeMonthlyDeposits] = useState(false);
 const [mergePeriodDeposits, setMergePeriodDeposits] = useState(false);
+ const [regionFilter, setRegionFilter] = useState('전체');
+const [regions, setRegions] = useState([]);
+const [showRegionManagePopup, setShowRegionManagePopup] = useState(false);
   const [sortBy, setSortBy] = useState('name');
 const [sortOrder, setSortOrder] = useState('asc');
   
   // useMemo로 상수 최적화
-  const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', bulsa: [], deposits: [], unpaid: '' }), []);
+  const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', region: '', bulsa: [], deposits: [], unpaid: '' }), []);
   const emptyBulsa = useMemo(() => ({ content: '', amount: '', person: '', size: '', location: '', photoURLs: [] }), []);
   const emptyDeposit = useMemo(() => ({ date: '', amount: '' }), []);
   
@@ -180,6 +197,18 @@ const [sortOrder, setSortOrder] = useState('asc');
         setBelievers(believersArray);
       } else {
         setBelievers([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+   useEffect(() => {
+    const regionsRef = ref(database, 'regions');
+    const unsubscribe = onValue(regionsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setRegions(Array.isArray(data) ? data : Object.values(data));
+      } else {
+        setRegions([]);
       }
     });
     return () => unsubscribe();
@@ -403,6 +432,15 @@ useEffect(() => {
     } catch (error) {
       console.error('저장 실패:', error);
       alert('데이터 저장에 실패했습니다.');
+    }
+  };
+   const saveRegions = async (newRegions) => {
+    try {
+      const regionsRef = ref(database, 'regions');
+      await set(regionsRef, newRegions);
+    } catch (error) {
+      console.error('지역 저장 실패:', error);
+      alert('지역 저장에 실패했습니다.');
     }
   };
 
@@ -1406,9 +1444,10 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
   };
 
  const filteredBelievers = useMemo(() => {
-  return believers.filter(b => {
-    if (!searchTerm) return true;
-    const searchParts = searchTerm.trim().split(/\s+/);
+   return believers.filter(b => {
+      if (regionFilter !== '전체' && b.region !== regionFilter) return false;
+      if (!searchTerm) return true;
+      const searchParts = searchTerm.trim().split(/\s+/);
     const sizeKeywords = [];
     let textSearchParts = [];
     searchParts.forEach(part => {
@@ -1438,7 +1477,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
       const hasBulsaWithSize = (b.bulsa || []).some(item => sizeKeywords.includes(item.size));
       return allTextMatches && hasBulsaWithSize;
     });
-  }, [believers, searchTerm]);
+   }, [believers, searchTerm, regionFilter]);
   const sortedBelievers = useMemo(() => {
     const sorted = [...filteredBelievers];
     
@@ -1647,7 +1686,31 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-amber-200">
+          {/* 지역 필터 바 */}
+<div className="bg-white rounded-xl shadow-lg px-4 sm:px-6 py-3 mb-4 border-2 border-amber-200 flex flex-wrap gap-2 items-center">
+  {userRole === 'admin' && (
+    <button
+      onClick={() => setShowRegionManagePopup(true)}
+      className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-colors"
+    >
+      ⚙ 지역관리
+    </button>
+  )}
+  {['전체', ...regions].map(r => (
+    <button
+      key={r}
+      onClick={() => setRegionFilter(r)}
+      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+        regionFilter === r
+          ? 'bg-amber-600 text-white border-amber-600'
+          : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+      }`}
+    >
+      {r}
+    </button>
+  ))}
+</div>
+         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-amber-200">
             <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">
   신도 목록 ({filteredBelievers.length}명)
   <span className="text-sm sm:text-base font-normal text-gray-600 ml-3">
@@ -1668,7 +1731,9 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full">
                    <thead>
-  <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
+  
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">지역</th>
+                    <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
     <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="name" 
@@ -1742,7 +1807,13 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                       {sortedBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 font-medium whitespace-nowrap">
-  <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
+   <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
+    {believer.region ? (
+      <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{believer.region}</span>
+    ) : (
+      <span className="text-gray-400 text-xs">-</span>
+    )}
+  </td> <button onClick={() => handleEdit(believer)} className="text-gray-800 hover:text-gray-900 font-semibold underline cursor-pointer">
     {believer.name}
   </button>
 </td>
@@ -1892,8 +1963,9 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                   onRemove={memoizedRemovePhoto}
                 />
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                  <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
+  <RegionSelect value={formData.region} onChange={(v) => setFormData({...formData, region: v})} regions={regions} />
+  <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="phone"]').focus(); }}} />
                   <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="010-0000-0000" onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('input[name="address"]').focus(); }}} />
                   <FormInput label="주소" type="text" name="address" value={formData.address} onChange={handleInputChange} onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); const target = document.querySelector('input[placeholder="예: 용두관음"]'); if (target) target.focus(); }}} />
                 </div>
@@ -2170,7 +2242,8 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
               <h2 className="text-2xl font-bold text-amber-900 mb-6">신도 정보 수정</h2>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
+  <RegionSelect value={formData.region} onChange={(v) => setFormData({...formData, region: v})} regions={regions} />
+  <FormInput label="이름" required type="text" name="name" value={formData.name} onChange={handleInputChange} />
                 <FormInput label="전화번호" required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} />
                 <FormInput label="주소" className="col-span-2" type="text" name="address" value={formData.address} onChange={handleInputChange} />
               </div>
@@ -2296,7 +2369,81 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
           </div>
         )}
 
-        {/* 사진 크게 보기 모달 */}
+        {/* 지역관리 팝업 */}
+{showRegionManagePopup && userRole === 'admin' && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-amber-900">지역 관리</h2>
+        <button onClick={() => setShowRegionManagePopup(false)} className="text-gray-500 hover:text-gray-700">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <h3 className="text-sm font-bold text-amber-800 mb-3">등록된 지역</h3>
+        {regions.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">등록된 지역이 없습니다.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {regions.map((r, idx) => (
+              <div key={idx} className="flex items-center gap-1 bg-amber-50 border border-amber-300 px-3 py-1.5 rounded-full">
+                <span className="text-sm font-bold text-amber-800">{r}</span>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`"${r}" 지역을 삭제하시겠습니까?`)) return;
+                    const newRegions = regions.filter((_, i) => i !== idx);
+                    await saveRegions(newRegions);
+                  }}
+                  className="text-red-400 hover:text-red-600 ml-1 font-bold text-xs"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-amber-200 pt-4">
+        <h3 className="text-sm font-bold text-amber-800 mb-3">새 지역 추가</h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            id="newRegionInput"
+            placeholder="예: 서울, 부산, 제주..."
+            className="flex-1 px-3 py-2.5 border-2 border-amber-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if (!val) return;
+                if (regions.includes(val)) { alert('이미 존재하는 지역입니다.'); return; }
+                const newRegions = [...regions, val];
+                saveRegions(newRegions);
+                e.target.value = '';
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              const input = document.getElementById('newRegionInput');
+              const val = input.value.trim();
+              if (!val) return;
+              if (regions.includes(val)) { alert('이미 존재하는 지역입니다.'); return; }
+              const newRegions = [...regions, val];
+              saveRegions(newRegions);
+              input.value = '';
+            }}
+            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-sm transition-colors"
+          >추가</button>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <button onClick={() => setShowRegionManagePopup(false)} className="w-full py-3 bg-gray-200 hover:bg-gray-300 rounded-lg font-bold text-sm transition-colors">닫기</button>
+      </div>
+    </div>
+  </div>
+)}
+       {/* 사진 크게 보기 모달 */}
         {viewPhotoModal && (
           <div 
             className="fixed inset-0 bg-black z-50 flex items-center justify-center" 
