@@ -1732,7 +1732,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                   <table className="min-w-full">
                    <thead>
   <tr className="bg-gradient-to-r from-amber-100 to-orange-100 border-b-2 border-amber-300">
-    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="name" 
         label="이름" 
@@ -1748,7 +1748,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="bulsa" 
         label="불사내용" 
@@ -1764,7 +1764,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-1 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="deposit" 
         label="입금액" 
@@ -1780,7 +1780,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         }}
       />
     </th>
-    <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
+    <th className="px-1 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">
       <SortButton 
         column="unpaid" 
         label="미수금" 
@@ -1797,14 +1797,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
       />
     </th>
     {userRole === 'admin' && (
-      <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
+      <th className="px-1 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-bold text-amber-900 whitespace-nowrap">관리</th>
     )}
   </tr>
 </thead>
                     <tbody>
                       {sortedBelievers.map((believer) => (
                         <tr key={believer.id} className="border-b border-amber-200 hover:bg-amber-50 transition-colors">
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-1 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm whitespace-nowrap">
   <div className="flex items-center gap-2">
     {believer.region && (
       <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">{believer.region}</span>
@@ -1814,7 +1814,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
     </button>
   </div>
 </td>
-                          <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-1 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
                               {believer.bulsa && believer.bulsa.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
@@ -1826,7 +1826,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                               ) : '없음'}
                             </button>
                           </td>
-                          <td className="px-3 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
+                          <td className="px-1 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openDepositPopup(believer)} className="text-green-600 hover:text-green-800 font-semibold underline">
                               {believer.deposits && believer.deposits.length > 0 ? (
                                 <div className="flex flex-col items-start leading-tight">
