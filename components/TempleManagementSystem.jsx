@@ -61,37 +61,53 @@ const MultiPhotoPreview = React.memo(({ photos, onRemove }) => {
     </div>
   );
 });
-const RegionSelect = React.memo(({ value, onChange, regions }) => {
+const RegionSelect = React.memo(({ value, onChange, regions, single = false, label = '지역' }) => {
+  if (single) {
+    return (
+      <div>
+        <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">{label}</label>
+        <div className="flex flex-wrap gap-2 p-2 border-2 border-amber-300 rounded-lg bg-white min-h-[44px]">
+          {regions.length === 0 && <span className="text-xs text-gray-400">등록된 지역이 없습니다</span>}
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+              !value ? 'bg-gray-400 text-white border-gray-400' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+            }`}
+          >없음</button>
+          {regions.map(r => (
+            <button key={r} type="button" onClick={() => onChange(value === r ? '' : r)}
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                value === r ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+              }`}
+            >{r}</button>
+          ))}
+        </div>
+        {value && <p className="text-xs text-amber-700 mt-1">선택: {value}</p>}
+      </div>
+    );
+  }
+
+  // 기존 다중 선택 (신도 지역용) — 내용 그대로 유지
   const selected = value ? value.split(',').map(v => v.trim()).filter(Boolean) : [];
   const toggle = (r) => {
-    const next = selected.includes(r)
-      ? selected.filter(s => s !== r)
-      : [...selected, r];
+    const next = selected.includes(r) ? selected.filter(s => s !== r) : [...selected, r];
     onChange(next.join(','));
   };
   return (
     <div>
-      <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">지역</label>
+      <label className="block text-sm sm:text-base font-bold text-amber-900 mb-2">{label}</label>
       <div className="flex flex-wrap gap-2 p-2 border-2 border-amber-300 rounded-lg bg-white min-h-[44px]">
         {regions.length === 0 && <span className="text-xs text-gray-400">등록된 지역이 없습니다</span>}
         {regions.map(r => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => toggle(r)}
+          <button key={r} type="button" onClick={() => toggle(r)}
             className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
-              selected.includes(r)
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+              selected.includes(r) ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
             }`}
-          >
-            {r}
-          </button>
+          >{r}</button>
         ))}
       </div>
-      {selected.length > 0 && (
-        <p className="text-xs text-amber-700 mt-1">선택: {selected.join(', ')}</p>
-      )}
+      {selected.length > 0 && <p className="text-xs text-amber-700 mt-1">선택: {selected.join(', ')}</p>}
     </div>
   );
 });
@@ -140,8 +156,10 @@ const SortButton = React.memo(({ column, label, currentSort, currentOrder, onSor
     </button>
   );
 });
-const BulsaFormFields = React.memo(({ form, setForm }) => (
+const BulsaFormFields = React.memo(({ form, setForm, regions = [] }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
+    {/* ✅ 추가 */}
+    <RegionSelect label="불사 지역" value={form.region || ''} onChange={(v) => setForm({...form, region: v})} regions={regions} single={true} />
     <FormInput label="불사내용" type="text" value={form.content} onChange={(e) => setForm({...form, content: e.target.value})} placeholder="예: 용두관음" />
     <FormInput label="불사금액 (만원)" type="number" value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} placeholder="0" />
     <FormInput label="봉안자/복위자" type="text" value={form.person} onChange={(e) => setForm({...form, person: e.target.value})} placeholder="OO생-홍길동" />
@@ -198,8 +216,10 @@ const [sortOrder, setSortOrder] = useState('asc');
   
   // useMemo로 상수 최적화
   const emptyForm = useMemo(() => ({ name: '', phone: '', address: '', region: '', bulsa: [], deposits: [], unpaid: '' }), []);
-  const emptyBulsa = useMemo(() => ({ content: '', amount: '', person: '', size: '', location: '', photoURLs: [] }), []);
-  const emptyDeposit = useMemo(() => ({ date: '', amount: '' }), []);
+  const emptyBulsa = useMemo(() => ({ 
+  content: '', amount: '', person: '', size: '', location: '', photoURLs: [], region: '' 
+}), []);
+  const emptyDeposit = useMemo(() => ({ date: '', amount: '', region: '' }), []);
   
   const [formData, setFormData] = useState(emptyForm);
   const [newBulsaData, setNewBulsaData] = useState(emptyBulsa);
@@ -1466,7 +1486,10 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
    return believers.filter(b => {
       if (regionFilter !== '전체') {
   const believerRegions = (b.region || '').split(',').map(r => r.trim()).filter(Boolean);
-  if (!believerRegions.includes(regionFilter)) return false;
+  const bulsaRegions = (b.bulsa || []).map(bul => bul.region).filter(Boolean);
+  const depositRegions = (b.deposits || []).map(d => d.region).filter(Boolean);
+  const allRegions = [...believerRegions, ...bulsaRegions, ...depositRegions];
+  if (!allRegions.includes(regionFilter)) return false;
 }
       if (!searchTerm) return true;
       const searchParts = searchTerm.trim().split(/\s+/);
@@ -1997,7 +2020,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
 
               <div className="mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-bold text-amber-800 mb-3 sm:mb-4">불사 정보 (선택사항)</h3>
-                <BulsaFormFields form={newBulsaData} setForm={setNewBulsaData} />
+                <BulsaFormFields form={newBulsaData} setForm={setNewBulsaData} regions={regions} />
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
@@ -2036,8 +2059,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-                          <span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
-                          <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
+<span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+{/* ✅ 추가 */}
+{b.region && (
+  <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-300">
+    {b.region}
+  </span>
+)}
+<span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">{formatNumber(b.amount)}만원</span>
                           <span className="text-gray-600 ml-2 sm:ml-4 text-xs sm:text-sm">({b.person})</span>
                           {b.location && <span className="text-gray-600 ml-1 sm:ml-2 text-xs sm:text-sm">위치: {b.location}</span>}
                         </div>
@@ -2115,7 +2144,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                     photos={bulsaPhotoPreviews} 
                     onRemove={memoizedRemoveBulsaPhoto}
                   />
-                  <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} />
+                  <BulsaFormFields form={bulsaForm} setForm={setBulsaForm} regions={regions} />
 
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <button onClick={addBulsa} className="flex-1 bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-amber-700 hover:to-orange-800 transition-all">추가하기</button>
@@ -2190,7 +2219,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                 )}
               </div>
 
-              <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} />
+              <BulsaFormFields form={editBulsaForm} setForm={setEditBulsaForm} regions={regions} />
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button onClick={confirmBulsaEdit} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-3 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all">수정 완료</button>
@@ -2221,9 +2250,15 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                     return (
                       <div key={idx} className="flex justify-between items-center py-2 border-b border-green-200 last:border-0">
                         <div className="flex-1">
-                          <span className="font-semibold text-gray-800">{d.date}</span>
-                          <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
-                        </div>
+  <span className="font-semibold text-gray-800">{d.date}</span>
+  <span className="text-gray-600 ml-6">{formatNumber(d.amount)}만원</span>
+  {/* ✅ 추가 */}
+  {d.region && (
+    <span className="ml-2 bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full border border-green-300">
+      {d.region}
+    </span>
+  )}
+</div>
                         {userRole === 'admin' && (
                           <button onClick={() => { setDeleteDepositInfo({ believerId: selectedBeliever.id, index: originalIndex, date: d.date, amount: d.amount }); setShowDepositDeleteConfirm(true); }} className="px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded transition-colors ml-4">삭제</button>
                         )}
@@ -2240,11 +2275,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
               {userRole === 'admin' && (
                 <>
                   <h3 className="font-bold text-green-900 mb-4">새 입금내역 추가</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <FormInput label="날짜" type="date" value={depositForm.date} onChange={(e) => setDepositForm({...depositForm, date: e.target.value})} />
-                    <FormInput label="금액 (만원)" type="number" value={depositForm.amount} onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})} placeholder="0" />
-                  </div>
-
+<div className="grid grid-cols-2 gap-4 mb-6">
+  <FormInput label="날짜" type="date" value={depositForm.date} onChange={(e) => setDepositForm({...depositForm, date: e.target.value})} />
+  <FormInput label="금액 (만원)" type="number" value={depositForm.amount} onChange={(e) => setDepositForm({...depositForm, amount: e.target.value})} placeholder="0" />
+</div>
+{/* ✅ 추가 */}
+<div className="mb-6">
+  <RegionSelect label="입금 지역" value={depositForm.region || ''} onChange={(v) => setDepositForm({...depositForm, region: v})} regions={regions} single={true} />
+</div>
                   <div className="flex gap-4">
                     <button onClick={addDeposit} className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all">추가하기</button>
                     <button onClick={() => setShowDepositPopup(false)} className="px-8 py-3 bg-gray-300 hover:bg-gray-400 rounded-lg font-bold">닫기</button>
