@@ -208,7 +208,7 @@ const [startDate, setStartDate] = useState('');
 const [endDate, setEndDate] = useState('');
   const [mergeMonthlyDeposits, setMergeMonthlyDeposits] = useState(false);
 const [mergePeriodDeposits, setMergePeriodDeposits] = useState(false);
- const [regionFilter, setRegionFilter] = useState('전체');
+ const [regionFilter, setRegionFilter] = useState([]); // 빈 배열 = 전체
 const [regions, setRegions] = useState([]);
 const [showRegionManagePopup, setShowRegionManagePopup] = useState(false);
   const [sortBy, setSortBy] = useState('name');
@@ -1484,14 +1484,14 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
 
  const filteredBelievers = useMemo(() => {
    return believers.filter(b => {
-      if (regionFilter !== '전체') {
+     if (regionFilter.length > 0) {
   const believerRegions = (b.region || '').split(',').map(r => r.trim()).filter(Boolean);
   const bulsaRegions = (b.bulsa || []).map(bul => bul.region).filter(Boolean);
   const depositRegions = (b.deposits || []).map(d => d.region).filter(Boolean);
   const allRegions = [...believerRegions, ...bulsaRegions, ...depositRegions];
-  if (!allRegions.includes(regionFilter)) return false;
-}
-      if (!searchTerm) return true;
+  // 선택된 지역 중 하나라도 포함되면 표시
+  if (!regionFilter.some(f => allRegions.includes(f))) return false;
+}   if (!searchTerm) return true;
       const searchParts = searchTerm.trim().split(/\s+/);
     const sizeKeywords = [];
     let textSearchParts = [];
@@ -1741,19 +1741,33 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
       ⚙ 지역관리
     </button>
   )}
-  {['전체', ...regions].map(r => (
-    <button
-      key={r}
-      onClick={() => setRegionFilter(r)}
-      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
-        regionFilter === r
-          ? 'bg-amber-600 text-white border-amber-600'
-          : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
-      }`}
-    >
-      {r}
-    </button>
-  ))}
+  <button
+  onClick={() => setRegionFilter([])}
+  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+    regionFilter.length === 0
+      ? 'bg-amber-600 text-white border-amber-600'
+      : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+  }`}
+>
+  전체
+</button>
+{regions.map(r => (
+  <button
+    key={r}
+    onClick={() => {
+      setRegionFilter(prev =>
+        prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]
+      );
+    }}
+    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+      regionFilter.includes(r)
+        ? 'bg-amber-600 text-white border-amber-600'
+        : 'bg-white text-amber-800 border-amber-300 hover:bg-amber-50'
+    }`}
+  >
+    {r}
+  </button>
+))}
 </div>
          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-amber-200">
             <h2 className="text-lg sm:text-2xl font-bold text-amber-900 mb-4 sm:mb-6">
@@ -1866,31 +1880,50 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
 </td>
                           <td className="px-1 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openBulsaPopup(believer)} className="text-blue-600 hover:text-blue-800 font-semibold underline">
-                              {believer.bulsa && believer.bulsa.length > 0 ? (
-                                <div className="flex flex-col items-start leading-tight">
-                                  <span className="text-sm font-bold">
-                                    {formatNumber(getTotalBulsaAmount(believer.bulsa))}{getTotalBulsaAmount(believer.bulsa) >= 10000 ? '원' : '만'}
-                                  </span>
-                                  <span className="text-xs text-gray-500">{believer.bulsa.length}건</span>
-                                </div>
-                              ) : '없음'}
-                            </button>
+  {(() => {
+    const filteredBulsa = regionFilter.length > 0
+      ? (believer.bulsa || []).filter(b => regionFilter.includes(b.region))
+      : (believer.bulsa || []);
+    return filteredBulsa.length > 0 ? (
+      <div className="flex flex-col items-start leading-tight">
+        <span className="text-sm font-bold">
+          {formatNumber(getTotalBulsaAmount(filteredBulsa))}{getTotalBulsaAmount(filteredBulsa) >= 10000 ? '원' : '만'}
+        </span>
+        <span className="text-xs text-gray-500">{filteredBulsa.length}건</span>
+      </div>
+    ) : '없음';
+  })()}
+</button>
                           </td>
                           <td className="px-1 sm:px-6 py-2 text-xs sm:text-sm whitespace-nowrap">
                             <button onClick={() => openDepositPopup(believer)} className="text-green-600 hover:text-green-800 font-semibold underline">
-                              {believer.deposits && believer.deposits.length > 0 ? (
-                                <div className="flex flex-col items-start leading-tight">
-                                  <span className="text-sm font-bold">
-                                    {formatNumber(getTotalDepositAmount(believer.deposits))}{getTotalDepositAmount(believer.deposits) >= 10000 ? '원' : '만'}
-                                  </span>
-                                  <span className="text-xs text-gray-500">{believer.deposits.length}건</span>
-                                </div>
-                              ) : '없음'}
-                            </button>
+  {(() => {
+    const filteredDeposits = regionFilter.length > 0
+      ? (believer.deposits || []).filter(d => regionFilter.includes(d.region))
+      : (believer.deposits || []);
+    return filteredDeposits.length > 0 ? (
+      <div className="flex flex-col items-start leading-tight">
+        <span className="text-sm font-bold">
+          {formatNumber(getTotalDepositAmount(filteredDeposits))}{getTotalDepositAmount(filteredDeposits) >= 10000 ? '원' : '만'}
+        </span>
+        <span className="text-xs text-gray-500">{filteredDeposits.length}건</span>
+      </div>
+    ) : '없음';
+  })()}
+</button>
                           </td>
                           <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-right text-red-600 font-bold whitespace-nowrap">
-                            {formatNumber(believer.unpaid)}{parseInt(believer.unpaid || 0) >= 10000 ? '원' : '만'}
-                          </td>
+  {(() => {
+    const filteredBulsa = regionFilter.length > 0
+      ? (believer.bulsa || []).filter(b => regionFilter.includes(b.region))
+      : (believer.bulsa || []);
+    const filteredDeposits = regionFilter.length > 0
+      ? (believer.deposits || []).filter(d => regionFilter.includes(d.region))
+      : (believer.deposits || []);
+    const unpaid = getTotalBulsaAmount(filteredBulsa) - getTotalDepositAmount(filteredDeposits);
+    return <>{formatNumber(unpaid)}{unpaid >= 10000 ? '원' : '만'}</>;
+  })()}
+</td>
                           {userRole === 'admin' && (
                             <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1 sm:gap-2">
