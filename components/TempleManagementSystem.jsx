@@ -544,6 +544,22 @@ const checkAndSendAutoBackup = async () => {
     setLoginPassword('');
     setShowAddForm(false);
   };
+ const migrateRegionData = async () => {
+  const updatedBelievers = believers.map(b => ({
+    ...b,
+    bulsa: (b.bulsa || []).map(bul => ({
+      ...bul,
+      region: bul.region || '중앙로1'
+    })),
+    deposits: (b.deposits || []).map(d => ({
+      ...d,
+      region: d.region || '중앙로1'
+    }))
+  }));
+  await saveBelievers(updatedBelievers);
+  setBelievers(updatedBelievers);
+  alert('✅ 완료!');
+};
 // 🆕 Google Drive 백업 함수
 // 🎯 중복 사진 방지 백업 시스템
 // 이미 백업한 사진은 건너뛰고, 새 사진만 Google Drive에 저장
