@@ -1573,17 +1573,25 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
 
   const searchTotals = useMemo(() => {
     return filteredBelievers.reduce((totals, believer) => {
-      const bulsaTotal = getTotalBulsaAmount(believer.bulsa || []);
-      const depositTotal = getTotalDepositAmount(believer.deposits || []);
-      const unpaidTotal = parseInt(believer.unpaid || 0);
+      // 지역 필터가 있으면 해당 지역 데이터만, 없으면 전체
+      const filteredBulsa = regionFilter.length > 0
+        ? (believer.bulsa || []).filter(b => regionFilter.includes(b.region))
+        : (believer.bulsa || []);
+      const filteredDeposits = regionFilter.length > 0
+        ? (believer.deposits || []).filter(d => regionFilter.includes(d.region))
+        : (believer.deposits || []);
+
+      const bulsaTotal = getTotalBulsaAmount(filteredBulsa);
+      const depositTotal = getTotalDepositAmount(filteredDeposits);
+      const unpaidTotal = bulsaTotal - depositTotal;
+
       return {
         totalBulsa: totals.totalBulsa + bulsaTotal,
         totalDeposit: totals.totalDeposit + depositTotal,
         totalUnpaid: totals.totalUnpaid + unpaidTotal
       };
     }, { totalBulsa: 0, totalDeposit: 0, totalUnpaid: 0 });
-  }, [filteredBelievers, getTotalBulsaAmount, getTotalDepositAmount]);
-
+  }, [filteredBelievers, regionFilter, getTotalBulsaAmount, getTotalDepositAmount]);
   // 메모이제이션된 콜백들
   const memoizedHandlePhotoChange = useCallback((e) => 
     handlePhotoChange(e, setPhotoFiles, setPhotoPreviews, photoFiles, photoPreviews),
