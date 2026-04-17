@@ -1545,19 +1545,30 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
     sorted.sort((a, b) => {
       let valueA, valueB;
       
-      switch(sortBy) {
-        case 'bulsa':
-          valueA = getTotalBulsaAmount(a.bulsa || []);
-          valueB = getTotalBulsaAmount(b.bulsa || []);
-          break;
-        case 'deposit':
-          valueA = getTotalDepositAmount(a.deposits || []);
-          valueB = getTotalDepositAmount(b.deposits || []);
-          break;
-        case 'unpaid':
-          valueA = parseInt(a.unpaid || 0);
-          valueB = parseInt(b.unpaid || 0);
-          break;
+     switch(sortBy) {
+  case 'bulsa': {
+    const filtA = regionFilter.length > 0 ? (a.bulsa || []).filter(b => regionFilter.includes(b.region)) : (a.bulsa || []);
+    const filtB = regionFilter.length > 0 ? (b.bulsa || []).filter(b => regionFilter.includes(b.region)) : (b.bulsa || []);
+    valueA = getTotalBulsaAmount(filtA);
+    valueB = getTotalBulsaAmount(filtB);
+    break;
+  }
+  case 'deposit': {
+    const filtA = regionFilter.length > 0 ? (a.deposits || []).filter(d => regionFilter.includes(d.region)) : (a.deposits || []);
+    const filtB = regionFilter.length > 0 ? (b.deposits || []).filter(d => regionFilter.includes(d.region)) : (b.deposits || []);
+    valueA = getTotalDepositAmount(filtA);
+    valueB = getTotalDepositAmount(filtB);
+    break;
+  }
+  case 'unpaid': {
+    const bulsaA = regionFilter.length > 0 ? (a.bulsa || []).filter(b => regionFilter.includes(b.region)) : (a.bulsa || []);
+    const bulsaB = regionFilter.length > 0 ? (b.bulsa || []).filter(b => regionFilter.includes(b.region)) : (b.bulsa || []);
+    const depA = regionFilter.length > 0 ? (a.deposits || []).filter(d => regionFilter.includes(d.region)) : (a.deposits || []);
+    const depB = regionFilter.length > 0 ? (b.deposits || []).filter(d => regionFilter.includes(d.region)) : (b.deposits || []);
+    valueA = getTotalBulsaAmount(bulsaA) - getTotalDepositAmount(depA);
+    valueB = getTotalBulsaAmount(bulsaB) - getTotalDepositAmount(depB);
+    break;
+  }
         case 'name':
         default:
           return sortOrder === 'asc' 
@@ -1569,7 +1580,7 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
     });
     
     return sorted;
-  }, [filteredBelievers, sortBy, sortOrder, getTotalBulsaAmount, getTotalDepositAmount]);
+  }, [filteredBelievers, sortBy, sortOrder, regionFilter, getTotalBulsaAmount, getTotalDepositAmount]);
 
   const searchTotals = useMemo(() => {
     return filteredBelievers.reduce((totals, believer) => {
