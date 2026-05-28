@@ -1233,7 +1233,7 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
   };
   
   const calcTotals = useCallback((bulsa, deposits) => {
-    const totalBulsa = (bulsa || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
+    const totalBulsa = (bulsa || []).filter(item => !item.isEscape).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
     const totalDeposit = (deposits || []).reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
     return { totalBulsa, totalDeposit, unpaid: String(totalBulsa - totalDeposit) };
   }, []);
@@ -1252,7 +1252,7 @@ const sendChunkedEmails = async (data, totalSize, totalSizeKB) => {
     return value.toLocaleString();
   }, []);
   
-  const getTotalBulsaAmount = useCallback((bulsa) => (bulsa || []).reduce((sum, b) => sum + parseInt(b.amount || 0), 0), []);
+  const getTotalBulsaAmount = useCallback((bulsa) => (bulsa || []).filter(b => !b.isEscape).reduce((sum, b) => sum + parseInt(b.amount || 0), 0), []);
   const getTotalDepositAmount = useCallback((deposits) => (deposits || []).reduce((sum, d) => sum + parseInt(d.amount || 0), 0), []);
 const toggleBulsaTemple = async (believerId, bulsaIndex) => {
   const updatedBelievers = believers.map(b => {
@@ -1263,6 +1263,23 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
         isTemple: !newBulsa[bulsaIndex].isTemple
       };
       return { ...b, bulsa: newBulsa };
+    }
+    return b;
+  });
+  setBelievers(updatedBelievers);
+  await saveBelievers(updatedBelievers);
+  setSelectedBeliever(updatedBelievers.find(b => b.id === believerId));
+};
+ const toggleBulsaEscape = async (believerId, bulsaIndex) => {
+  const updatedBelievers = believers.map(b => {
+    if (b.id === believerId) {
+      const newBulsa = [...b.bulsa];
+      newBulsa[bulsaIndex] = {
+        ...newBulsa[bulsaIndex],
+        isEscape: !newBulsa[bulsaIndex].isEscape
+      };
+      const { unpaid } = calcTotals(newBulsa, b.deposits || []);
+      return { ...b, bulsa: newBulsa, unpaid };
     }
     return b;
   });
@@ -2128,7 +2145,8 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           {b.size && <span className="text-amber-700 font-bold text-sm sm:text-base">[{b.size}]</span>}
-<span className="font-semibold text-gray-800 text-sm sm:text-base ml-2">{b.content}</span>
+<span className={`font-semibold text-sm sm:text-base ml-2 ${b.isEscape ? 'text-red-600 line-through' : 'text-gray-800'}`}>{b.content}</span>
+{b.isEscape && <span className="ml-2 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full border border-red-300">도망</span>}
 {/* ✅ 추가 */}
 {b.region && (
   <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-300">
@@ -2143,14 +2161,23 @@ const toggleBulsaTemple = async (believerId, bulsaIndex) => {
   <div className="flex gap-2 items-center">
     {/* 절 체크박스 */}
     <label className="flex items-center gap-1 cursor-pointer bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-lg border-2 border-purple-300 transition-colors">
-      <input
-        type="checkbox"
-        checked={b.isTemple || false}
-        onChange={() => toggleBulsaTemple(selectedBeliever.id, idx)}
-        className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-      />
-      <span className="text-sm font-bold text-purple-700">절</span>
-    </label>
+  <input
+    type="checkbox"
+    checked={b.isTemple || false}
+    onChange={() => toggleBulsaTemple(selectedBeliever.id, idx)}
+    className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+  />
+  <span className="text-sm font-bold text-purple-700">절</span>
+</label>
+<label className="flex items-center gap-1 cursor-pointer bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg border-2 border-red-300 transition-colors">
+  <input
+    type="checkbox"
+    checked={b.isEscape || false}
+    onChange={() => toggleBulsaEscape(selectedBeliever.id, idx)}
+    className="w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500"
+  />
+  <span className="text-sm font-bold text-red-700">도망</span>
+</label>
     <button onClick={() => openBulsaEditPopup(idx)} className="px-3 sm:px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">수정</button>
     <button onClick={() => { setDeleteBulsaInfo({ believerId: selectedBeliever.id, index: idx, content: b.content }); setShowBulsaDeleteConfirm(true); }} className="px-3 sm:px-4 py-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-colors">삭제</button>
   </div>
